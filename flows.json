@@ -108,11 +108,14 @@
             "e689ebec620b3e0d",
             "a9401ed12101439c",
             "f91674bbbf58bb44",
-            "850bc2662c5c3570"
+            "850bc2662c5c3570",
+            "e5625775393b8c11",
+            "8d3b8d6c4c1f9a01",
+            "a7f3e2f0b6c4d912"
         ],
         "x": 54,
         "y": 1459,
-        "w": 2192,
+        "w": 2152,
         "h": 482
     },
     {
@@ -508,7 +511,7 @@
         "z": "ddadc02b",
         "g": "8f2c3f72b3b70495",
         "name": "Build Config from Manifest",
-        "func": "// === Bootstrap Config Router ===\n// Expected incoming topic format: bootstrap/announce/{deviceID}\n\n// --- Parse topic ---\nconst parts = (msg.topic || '').split('/');\nif (parts.length < 3) return null;       // Ignore if topic is too short\n\n// Extract deviceID and normalize to uppercase\nconst deviceID = (parts[2] || '').toUpperCase();\n\n// --- Load manifest from global ---\nconst manifest = global.get('fleet_manifest');\nif (!manifest || !manifest.devices) {\n    node.warn(\"Manifest not loaded in global context\");\n    return null;\n}\n\n// Build a normalized lookup table (all keys uppercase)\nconst norm = {};\nfor (const [k, v] of Object.entries(manifest.devices)) {\n    norm[k.toUpperCase()] = v;\n}\n\n// Find the device entry\nconst entry = norm[deviceID];\nif (!entry) {\n    node.warn(`Unknown device: ${deviceID}`);\n    return null;\n}\n\n// --- Check status from payload ---\nconst st = msg.payload?.status;\nif (st === 'bootstrapped') {\n    // Already bootstrapped, nothing more to do\n    return null;\n}\n\n// --- Build response message ---\nreturn {\n    topic: `bootstrap/config/${deviceID}`,\n    payload: {\n        fleet_id: manifest.fleet_id,\n        name: entry.name,\n\n        // Only include vessel_id if defined\n        ...(entry.vessel_id ? { vessel_id: entry.vessel_id } : {}),\n\n        // Only include HA info if present\n        ...(entry.ha ? { ha: entry.ha } : {})\n    }\n};\n",
+        "func": "// === Bootstrap Config Router ===\n// Expected incoming topic format: bootstrap/announce/{deviceID}\n\n// Build Config from Manifest (replace function body)\nconst parts = String(msg.topic || \"\").split(\"/\");\nif (parts.length < 3) return null;\n\nconst rawId = parts[2];\nconst normId = String(rawId).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n\nconst manifest = global.get(\"fleet_manifest\");\nif (!manifest || !manifest.devices) {\n  node.warn(\"Manifest not loaded in global context\");\n  return null;\n}\n\n// normalized lookup\nconst byId = {};\nfor (const [k, v] of Object.entries(manifest.devices)) {\n  const keyNorm = String(k).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n  if (keyNorm) byId[keyNorm] = v;\n\n  if (v && v.device_id) {\n    const idNorm = String(v.device_id).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n    if (idNorm) byId[idNorm] = v;\n  }\n  if (v && v.mac) {\n    const macNorm = String(v.mac).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n    if (macNorm) byId[macNorm] = v;\n  }\n}\n\nconst entry = byId[normId];\nif (!entry) {\n  node.warn(`Unknown device: ${rawId} (norm=${normId})`);\n  return null;\n}\n\nconst st = msg.payload?.status;\nif (st === \"bootstrapped\") return null;\n\nreturn {\n  topic: `bootstrap/config/${normId}`,\n  payload: {\n    fleet_id: manifest.fleet_id,\n    name: entry.name,\n    ...(entry.vessel_id ? { vessel_id: entry.vessel_id } : {}),\n    ...(entry.ha ? { ha: entry.ha } : {})\n  }\n};\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -548,7 +551,7 @@
         "z": "ddadc02b",
         "g": "8f2c3f72b3b70495",
         "name": "Fleet Table Bootstrap Updater",
-        "func": "// === Fleet Table Bootstrap Updater ===\n// Handles bootstrap/announce/{MAC} - enriches with manifest data\n// ADDED: DNS resolve for driver devices → stores udp_ip::{vessel_id} in flow context\n\n\nconst parts = (msg.topic || '').split('/');\nif (parts.length < 3) return null;\n\nconst mac = parts[2];\nconst p = msg.payload || {};\nconst status = p.status || 'pending';\n\n// Load manifest and find device\nconst manifest = global.get('fleet_manifest');\nlet deviceInfo = null;\n\nif (manifest && manifest.devices) {\n    const norm = {};\n    for (const [k, v] of Object.entries(manifest.devices)) {\n        norm[k.toUpperCase()] = v;\n    }\n    deviceInfo = norm[mac.toUpperCase()];\n}\n\n// Update fleet table\nlet table = flow.get('fleet_table') || [];\nlet idx = table.findIndex(e => e.device_id === mac);\n\nif (idx >= 0) {\n    table[idx].status = status;\n    table[idx].last_seen = new Date().toLocaleString();\n    if (deviceInfo) {\n        if (deviceInfo.name) table[idx].name = deviceInfo.name;\n        if (deviceInfo.vessel_id) table[idx].vessel_id = deviceInfo.vessel_id;\n        if (manifest.fleet_id) table[idx].fleet_id = manifest.fleet_id;\n    }\n} else {\n    table.push({\n        device_id: mac,\n        name: deviceInfo?.name || '',\n        fleet_id: manifest?.fleet_id || '',\n        vessel_id: deviceInfo?.vessel_id || '',\n        status: status,\n        uptime: 0,\n        last_seen: new Date().toLocaleString()\n    });\n}\n\nflow.set('fleet_table', table);\n\n\n\nreturn { payload: table };",
+        "func": "// === Fleet Table Bootstrap Updater ===\n// Handles bootstrap/announce/{MAC} - enriches with manifest data\n\nconst parts = String(msg.topic || \"\").split(\"/\");\nif (parts.length < 3) return null;\n\nconst rawMac = parts[2];\nconst normMac = String(rawMac).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n\nconst p = msg.payload || {};\nconst status = p.status || \"pending\";\n\nconst manifest = global.get(\"fleet_manifest\") || {};\nconst devices = manifest.devices || {};\n\n// Build normalized manifest index (supports keys with/without separators)\nconst byMac = {};\nfor (const [k, v] of Object.entries(devices)) {\n  const keyNorm = String(k).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n  if (keyNorm) byMac[keyNorm] = v;\n\n  if (v && v.device_id) {\n    const idNorm = String(v.device_id).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n    if (idNorm) byMac[idNorm] = v;\n  }\n  if (v && v.mac) {\n    const macNorm = String(v.mac).toUpperCase().replace(/[^A-F0-9]/g, \"\");\n    if (macNorm) byMac[macNorm] = v;\n  }\n}\n\nconst deviceInfo = byMac[normMac] || null;\n\n// Update fleet table\nlet table = flow.get(\"fleet_table\") || [];\nlet idx = table.findIndex(e => String(e.device_id || \"\").toUpperCase().replace(/[^A-F0-9]/g, \"\") === normMac);\n\nconst row = {\n  device_id: normMac,\n  name: deviceInfo?.name || \"\",\n  fleet_id: manifest.fleet_id || \"\",\n  vessel_id: deviceInfo?.vessel_id || \"\",\n  status,\n  uptime: 0,\n  last_seen: new Date().toLocaleString()\n};\n\nif (idx >= 0) {\n  table[idx] = { ...table[idx], ...row };\n} else {\n  table.push(row);\n}\n\nflow.set(\"fleet_table\", table);\n\n// pass vessel context downstream for resolver\nif (deviceInfo?.vessel_id) {\n  msg.vessel_id = deviceInfo.vessel_id;\n  msg.device_id = normMac;\n  flow.set(`device_vessel::${normMac}`, deviceInfo.vessel_id);\n}\n\nmsg.payload = table;\nreturn msg;\n\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -733,7 +736,7 @@
         "finalize": "",
         "libs": [],
         "x": 470,
-        "y": 1720,
+        "y": 1740,
         "wires": [
             [
                 "8af6712c"
@@ -746,7 +749,7 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "Select Target Vessel (CH10)",
-        "func": "// === Fleet Router ===\n// CH10 <= 0 => ROV, CH10 > 0 => Tender\n// output[0] = ROV path, output[1] = Tender path\n\nconst ch = msg.payload || {};\nconst manifest = global.get(\"fleet_manifest\") || {};\nconst fleet_id = msg.meta?.fleet_id || manifest.fleet_id || \"\";\n\nfunction normalizeRoles(role) {\n  if (Array.isArray(role)) return role.map(r => String(r).trim().toLowerCase());\n  if (typeof role === \"string\") return role.split(\",\").map(r => r.trim().toLowerCase()).filter(Boolean);\n  return [];\n}\n\nfunction inferKind(vesselId) {\n  const v = String(vesselId || \"\").toLowerCase();\n  if (v.includes(\"tender\")) return \"tender\";\n  if (v.includes(\"rov\")) return \"rov\";\n  return null;\n}\n\n// Build unique list of driver vessels\nconst devices = Object.values(manifest.devices || {});\nconst driverVessels = [];\nfor (const dev of devices) {\n  const roles = normalizeRoles(dev.role);\n  if (!roles.includes(\"driver\")) continue;\n  if (!dev.vessel_id) continue;\n  if (!driverVessels.includes(dev.vessel_id)) driverVessels.push(dev.vessel_id);\n}\nif (!driverVessels.length) {\n  node.warn(\"No driver vessels found in manifest\");\n  return null;\n}\n\nconst targetKind = Number(ch.ch10 || 0) > 0 ? \"tender\" : \"rov\";\n\n// Resolve selected vessel\nlet vessel_id = manifest.defaults?.[targetKind] || null;\nif (!vessel_id || !driverVessels.includes(vessel_id)) {\n  vessel_id = driverVessels.find(v => inferKind(v) === targetKind) || null;\n}\nif (!vessel_id) vessel_id = driverVessels[0]; // IMPORTANT: fallback before latch writes\n\n// Latch previous vessel on switch-away\nconst prevActive = flow.get(\"active_vessel_id\");\nif (prevActive && prevActive !== vessel_id) {\n  const prevSnap = flow.get(`veh_last::${prevActive}`);\n  if (prevSnap && Array.isArray(prevSnap.thr)) {\n    flow.set(`veh_latched::${prevActive}`, true);\n  }\n}\n\n// Active vessel is always live-controlled\nflow.set(`veh_latched::${vessel_id}`, false);\nflow.set(\"active_vessel_id\", vessel_id);\n\n// Extract role list for selected vessel\nlet roles = [];\nfor (const dev of devices) {\n  if (dev.vessel_id === vessel_id) {\n    roles = normalizeRoles(dev.role);\n    break;\n  }\n}\n\nmsg.payload = Object.assign({}, ch, {\n  heading: flow.get(`nav::${vessel_id}::heading`) || 0,\n  pitch: flow.get(`nav::${vessel_id}::pitch`) || 0,\n  roll: flow.get(`nav::${vessel_id}::roll`) || 0,\n  lat: flow.get(`nav::${vessel_id}::lat`) || 0,\n  lon: flow.get(`nav::${vessel_id}::lon`) || 0,\n  depth: flow.get(`nav::${vessel_id}::depth`) || 0,\n  pitch_rate: flow.get(`nav::${vessel_id}::pitch_rate`) || 0,\n  roll_rate: flow.get(`nav::${vessel_id}::roll_rate`) || 0,\n  yaw_rate: flow.get(`nav::${vessel_id}::yaw_rate`) || 0\n});\n\nmsg.router = { fleet_id, vessel_id, kind: targetKind, roles };\n\n// Heartbeat source cache\nflow.set(\"last_channels\", msg.payload);\nflow.set(\"last_router\", msg.router);\n\nreturn targetKind === \"rov\" ? [msg, null] : [null, msg];\n",
+        "func": "// === Fleet Router ===\n// CH10 <= 0 => ROV, CH10 > 0 => Tender\n// output[0] = ROV path, output[1] = Tender path\n\n// === Fleet Router (TEMP deterministic) ===\n// CH10 <= 0 => ROV-02\n// CH10 > 0  => TENDER-01\n// output[0] = ROV path, output[1] = Tender path\n\nconst ch = msg.payload || {};\nconst manifest = global.get(\"fleet_manifest\") || {};\nconst fleet_id = msg.meta?.fleet_id || manifest.fleet_id || \"\";\n\n// Deterministic vessel select (no manifest fallback/inference)\nconst targetKind = Number(ch.ch10 || 0) > 0 ? \"tender\" : \"rov\";\nconst vessel_id = (targetKind === \"tender\") ? \"tender-01\" : \"rov-02\";\n\n// Latch previous vessel on switch-away\nconst prevActive = flow.get(\"active_vessel_id\");\nif (prevActive && prevActive !== vessel_id) {\n  const prevSnap = flow.get(`veh_last::${prevActive}`);\n  if (prevSnap && Array.isArray(prevSnap.thr)) {\n    flow.set(`veh_latched::${prevActive}`, true);\n  }\n}\n\n// Active vessel is always live-controlled\nflow.set(`veh_latched::${vessel_id}`, false);\nflow.set(\"active_vessel_id\", vessel_id);\n\n// Fixed role context for downstream nodes\nconst roles = [\"driver\"];\n\nmsg.payload = Object.assign({}, ch, {\n  heading: flow.get(`nav::${vessel_id}::heading`) || 0,\n  pitch: flow.get(`nav::${vessel_id}::pitch`) || 0,\n  roll: flow.get(`nav::${vessel_id}::roll`) || 0,\n  lat: flow.get(`nav::${vessel_id}::lat`) || 0,\n  lon: flow.get(`nav::${vessel_id}::lon`) || 0,\n  depth: flow.get(`nav::${vessel_id}::depth`) || 0,\n  pitch_rate: flow.get(`nav::${vessel_id}::pitch_rate`) || 0,\n  roll_rate: flow.get(`nav::${vessel_id}::roll_rate`) || 0,\n  yaw_rate: flow.get(`nav::${vessel_id}::yaw_rate`) || 0\n});\n\nmsg.router = { fleet_id, vessel_id, kind: targetKind, roles };\n\n// Heartbeat source cache\nflow.set(\"last_channels\", msg.payload);\nflow.set(\"last_router\", msg.router);\nflow.set(\"last_router_ts\", Date.now());\n\nreturn targetKind === \"rov\" ? [msg, null] : [null, msg];\n",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -792,7 +795,7 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "ROV Thruster Mixer → UDP+MQTT",
-        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV 8-THRUSTER MIXER WITH PER-THRUSTER DEADBAND & REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// PURPOSE:\n// --------\n// Converts 6-axis control commands (surge/sway/heave/roll/pitch/yaw) into\n// individual thruster power outputs for an 8-thruster ROV configuration.\n// Applies per-thruster forward/reverse deadband compensation and reverse bias.\n//\n// INPUTS:\n// -------\n// From control loop (normalized [-1, 1]):\n//   - control.roll_thrust   → roll correction\n//   - control.pitch_thrust  → pitch correction\n//   - control.yaw_thrust    → yaw correction\n//   - control.heave_thrust  → heave/depth correction (or direct stick in MANUAL)\n//\n// From stick channels (percent [-100, 100]):\n//   - ch1 → sway (left/right)\n//   - ch2 → surge (forward/back)\n//   - ch3 → heave (up/down) if not using control loop\n//   - ch4 → yaw (used by control loop)\n//   - ch5 → ARM switch: >0 = armed, <=0 = disarmed (zero packet sent)\n//   - ch6 → roll (used by control loop)\n//   - ch7 → pitch (used by control loop)\n//\n// OUTPUTS:\n// --------\n// output[0]: MQTT → kept for simulator / debug during UDP transition\n//   - topic: fleet/{fleet_id}/vessels/{vessel_id}/thrusters/set\n//   - payload: { thr: [t1..t8] } clamped to [-100, 100]\n//\n// output[1]: UDP binary packet → udp out node\n//   - 18-byte packet: craft_type(1) + craft_id(1) + T1..T8 int16LE x10 (16)\n//   - All thrusters zeroed if disarmed (CH5 <= 0)\n//   - Zeros still sent when disarmed to keep ESP deadman timer alive\n//   - msg.ip and msg.port set dynamically from flow context\n//   - Dropped silently if udp_ip::{vessel_id} not yet resolved\n//\n// THRUSTER LAYOUT:\n// ----------------\n//\n// TOP VIEW (Horizontal thrusters 1-4: surge/sway/yaw)\n// ----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [1] Port Bow    [2] Stbd Bow\n//          ╱              ╲\n//         ╱                ╲\n//        ╱                  ╲\n//       ╱                    ╲\n//  [4] Port Stern      [3] Stbd Stern\n//\n// SIDE VIEW (Vertical thrusters 5-8: heave/roll/pitch)\n// -----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [5] Port Bow (vert)    [6] Stbd Bow (vert)\n//          ↕                      ↕\n//\n//     [8] Port Stern (vert)   [7] Stbd Stern (vert)\n//          ↕                      ↕\n//\n// SIGN CONVENTIONS:\n// -----------------\n// Body frame (right-hand rule):\n//   +Surge  = forward (bow direction)\n//   +Sway   = starboard (right)\n//   +Heave  = upward (toward surface)\n//   +Roll   = roll right (starboard down, port up)\n//   +Pitch  = nose down (bow down, stern up)\n//   +Yaw    = turn right (clockwise from above)\n//\n// ═══════════════════════════════════════════════════════════════════════════\n\nif (flow.get(\"safety_kill_active\") === true) return null;\n\nconst ch = msg.payload || {};\nconst c = msg.control || {};\nconst fleet_id = msg.router?.fleet_id || \"\";\nconst vessel_id = msg.router?.vessel_id || \"rov-01\";\n\n// ═══════════════════════════════════════════════════════════\n// ARM CHECK — CH5 > 0 = armed, <= 0 = disarmed\n// When disarmed: zero packet is still sent to keep ESP deadman alive\n// ═══════════════════════════════════════════════════════════\n\nconst armed = (ch.ch5 || 0) > 0;\n\n// ═══════════════════════════════════════════════════════════\n// TUNING PARAMETERS\n// ═══════════════════════════════════════════════════════════\n\nconst ZERO_CUTOFF = 0.5;\n\nconst REVERSE_BIAS = {\n  t1: 0.30, t2: 0.30, t3: 0.30, t4: 0.30,\n  t5: 0.30, t6: 0.30, t7: 0.30, t8: 0.30\n};\n\nconst REVERSE_GAIN = {\n  t1: 1 + REVERSE_BIAS.t1, t2: 1 + REVERSE_BIAS.t2,\n  t3: 1 + REVERSE_BIAS.t3, t4: 1 + REVERSE_BIAS.t4,\n  t5: 1 + REVERSE_BIAS.t5, t6: 1 + REVERSE_BIAS.t6,\n  t7: 1 + REVERSE_BIAS.t7, t8: 1 + REVERSE_BIAS.t8\n};\n\nconst DEADBAND = {\n  t1: { forward: 6, reverse: 0 }, t2: { forward: 6, reverse: 0 },\n  t3: { forward: 6, reverse: 0 }, t4: { forward: 6, reverse: 0 },\n  t5: { forward: 6, reverse: 0 }, t6: { forward: 6, reverse: 0 },\n  t7: { forward: 6, reverse: 0 }, t8: { forward: 6, reverse: 0 }\n};\n\n// ═══════════════════════════════════════════════════════════\n// INPUT EXTRACTION\n// ═══════════════════════════════════════════════════════════\n\nfunction inputDeadband(val, db) {\n  return Math.abs(val) < db ? 0 : val;\n}\n\nlet sway = (ch.ch1 || 0);\nlet surge = ch.ch2 || 0;\n\nlet heave = (c.heave_thrust !== undefined)\n  ? inputDeadband(c.heave_thrust, 0.05) * 100\n  : (ch.ch3 || 0);\n\nlet roll = inputDeadband(c.roll_thrust ?? 0, 0.05) * 100;\nlet pitch = inputDeadband(c.pitch_thrust ?? 0, 0.05) * 100;\nlet yaw = inputDeadband(c.yaw_thrust ?? 0, 0.05) * 100;\n\n// ═══════════════════════════════════════════════════════════\n// MIXER EQUATIONS\n// ═══════════════════════════════════════════════════════════\n\nlet thr1 = surge - sway - yaw;\nlet thr2 = -surge - sway - yaw;\nlet thr3 = -surge + sway - yaw;\nlet thr4 = surge + sway - yaw;\n\nlet thr5 = -heave - roll - pitch;\nlet thr6 = heave - roll + pitch;\nlet thr7 = -heave + roll + pitch;\nlet thr8 = heave + roll - pitch;\n\nlet thr = [thr1, thr2, thr3, thr4, thr5, thr6, thr7, thr8];\n\n// ═══════════════════════════════════════════════════════════\n// FIRST NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_cmd = Math.max(...thr.map(Math.abs));\nif (max_cmd > 100) {\n  const scale = 100 / max_cmd;\n  thr = thr.map(t => t * scale);\n}\n\n// ═══════════════════════════════════════════════════════════\n// REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction reverse_compensate(val, gain) {\n  return (val < 0) ? val * gain : val;\n}\n\nthr[0] = reverse_compensate(thr[0], REVERSE_GAIN.t1);\nthr[1] = reverse_compensate(thr[1], REVERSE_GAIN.t2);\nthr[2] = reverse_compensate(thr[2], REVERSE_GAIN.t3);\nthr[3] = reverse_compensate(thr[3], REVERSE_GAIN.t4);\nthr[4] = reverse_compensate(thr[4], REVERSE_GAIN.t5);\nthr[5] = reverse_compensate(thr[5], REVERSE_GAIN.t6);\nthr[6] = reverse_compensate(thr[6], REVERSE_GAIN.t7);\nthr[7] = reverse_compensate(thr[7], REVERSE_GAIN.t8);\n\n// ═══════════════════════════════════════════════════════════\n// DEADBAND COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction deadband_compensate(val, fwd_db, rev_db) {\n  if (val > ZERO_CUTOFF) {\n    return fwd_db + (val / 100) * (100 - fwd_db);\n  } else if (val < -ZERO_CUTOFF) {\n    return -(rev_db + (Math.abs(val) / 100) * (100 - rev_db));\n  }\n  return 0;\n}\n\nthr[0] = deadband_compensate(thr[0], DEADBAND.t1.forward, DEADBAND.t1.reverse);\nthr[1] = deadband_compensate(thr[1], DEADBAND.t2.forward, DEADBAND.t2.reverse);\nthr[2] = deadband_compensate(thr[2], DEADBAND.t3.forward, DEADBAND.t3.reverse);\nthr[3] = deadband_compensate(thr[3], DEADBAND.t4.forward, DEADBAND.t4.reverse);\nthr[4] = deadband_compensate(thr[4], DEADBAND.t5.forward, DEADBAND.t5.reverse);\nthr[5] = deadband_compensate(thr[5], DEADBAND.t6.forward, DEADBAND.t6.reverse);\nthr[6] = deadband_compensate(thr[6], DEADBAND.t7.forward, DEADBAND.t7.reverse);\nthr[7] = deadband_compensate(thr[7], DEADBAND.t8.forward, DEADBAND.t8.reverse);\n\n// ═══════════════════════════════════════════════════════════\n// SECOND NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_final = Math.max(...thr.map(Math.abs));\nif (max_final > 100) {\n  const scale_final = 100 / max_final;\n  thr = thr.map(t => t * scale_final);\n}\n\n// ═══════════════════════════════════════════════════════════\n// CLAMP + ARM GATE\n// If disarmed, override all outputs to zero.\n// Zero packet is still sent to keep ESP deadman timer alive.\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v) {\n  return Math.max(-100, Math.min(100, Math.round(v)));\n}\n\nconst thrClamped = armed ? thr.map(clamp) : [0, 0, 0, 0, 0, 0, 0, 0];\n\n// Cache latest output for cross-vessel latching/replay\nflow.set(`veh_last::${vessel_id}`, {\n  fleet_id,\n  vessel_id,\n  thr: thrClamped,\n  craft_type: 1, // ROV\n  craft_id: Number(\n    flow.get(`udp_craft_id::${String(vessel_id).trim().toLowerCase()}`) ??\n    flow.get(`udp_craft_id::${vessel_id}`) ??\n    1\n  ),\n  ts: Date.now()\n});\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 1: MQTT (simulator / debug — remove once UDP proven)\n// ═══════════════════════════════════════════════════════════\n\nconst mqttMsg = {\n  topic: `fleet/${fleet_id}/vessels/${vessel_id}/thrusters/set`,\n  payload: { thr: thrClamped, armed }\n};\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 0: UDP binary packet\n// ═══════════════════════════════════════════════════════════\n\nconst vesselKey = String(vessel_id || \"\").trim().toLowerCase();\nconst udp_ip = flow.get(`udp_ip::${vesselKey}`) || flow.get(`udp_ip::${vessel_id}`) || null;\n\n// Use same lookup order as cache + correct default craft_id\nconst craft_id = Number(\n  flow.get(`udp_craft_id::${vesselKey}`) ??\n  flow.get(`udp_craft_id::${vessel_id}`) ??\n  1\n);\n\n// Optional per-vessel enable switch (default true)\nconst enabled = flow.get(`vessel_enabled::${vessel_id}`);\nif (enabled === false) {\n  // Output order is [MQTT, UDP]\n  return [mqttMsg, null];\n}\n\n// No UDP IP yet: still publish MQTT debug/sim command\nif (!udp_ip) {\n  return [mqttMsg, null];\n}\n\n// Build 18-byte packet:\n//   byte 0:     craft_type = 1 (ROV8)\n//   byte 1:     craft_id\n//   bytes 2-17: T1..T8 as int16 little-endian, scaled x10\n//               (-100 → -1000, +100 → +1000)\n//   All zeros when disarmed\nconst buf = Buffer.alloc(18);\nbuf.writeUInt8(1, 0);\nbuf.writeUInt8(craft_id, 1);\n\nfor (let i = 0; i < 8; i++) {\n  const val = Math.max(-1000, Math.min(1000, Math.round(thrClamped[i] * 10)));\n  buf.writeInt16LE(val, 2 + i * 2);\n}\n\nconst udpMsg = {\n  payload: buf,\n  ip: udp_ip,\n  port: 14560\n};\n\n// Output order is [MQTT, UDP]\nreturn [mqttMsg, udpMsg];\n",
+        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV 8-THRUSTER MIXER WITH PER-THRUSTER DEADBAND & REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// PURPOSE:\n// --------\n// Converts 6-axis control commands (surge/sway/heave/roll/pitch/yaw) into\n// individual thruster power outputs for an 8-thruster ROV configuration.\n// Applies per-thruster forward/reverse deadband compensation and reverse bias.\n//\n// INPUTS:\n// -------\n// From control loop (normalized [-1, 1]):\n//   - control.roll_thrust   → roll correction\n//   - control.pitch_thrust  → pitch correction\n//   - control.yaw_thrust    → yaw correction\n//   - control.heave_thrust  → heave/depth correction (or direct stick in MANUAL)\n//\n// From stick channels (percent [-100, 100]):\n//   - ch1 → sway (left/right)\n//   - ch2 → surge (forward/back)\n//   - ch3 → heave (up/down) if not using control loop\n//   - ch4 → yaw (used by control loop)\n//   - ch5 → ARM switch: >0 = armed, <=0 = disarmed (zero packet sent)\n//   - ch6 → roll (used by control loop)\n//   - ch7 → pitch (used by control loop)\n//\n// OUTPUTS:\n// --------\n// output[0]: MQTT → kept for simulator / debug during UDP transition\n//   - topic: fleet/{fleet_id}/vessels/{vessel_id}/thrusters/set\n//   - payload: { thr: [t1..t8] } clamped to [-100, 100]\n//\n// output[1]: UDP binary packet → udp out node\n//   - 18-byte packet: craft_type(1) + craft_id(1) + T1..T8 int16LE x10 (16)\n//   - All thrusters zeroed if disarmed (CH5 <= 0)\n//   - Zeros still sent when disarmed to keep ESP deadman timer alive\n//   - msg.ip and msg.port set dynamically from flow context\n//   - Dropped silently if udp_ip::{vessel_id} not yet resolved\n//\n// THRUSTER LAYOUT:\n// ----------------\n//\n// TOP VIEW (Horizontal thrusters 1-4: surge/sway/yaw)\n// ----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [1] Port Bow    [2] Stbd Bow\n//          ╱              ╲\n//         ╱                ╲\n//        ╱                  ╲\n//       ╱                    ╲\n//  [4] Port Stern      [3] Stbd Stern\n//\n// SIDE VIEW (Vertical thrusters 5-8: heave/roll/pitch)\n// -----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [5] Port Bow (vert)    [6] Stbd Bow (vert)\n//          ↕                      ↕\n//\n//     [8] Port Stern (vert)   [7] Stbd Stern (vert)\n//          ↕                      ↕\n//\n// SIGN CONVENTIONS:\n// -----------------\n// Body frame (right-hand rule):\n//   +Surge  = forward (bow direction)\n//   +Sway   = starboard (right)\n//   +Heave  = upward (toward surface)\n//   +Roll   = roll right (starboard down, port up)\n//   +Pitch  = nose down (bow down, stern up)\n//   +Yaw    = turn right (clockwise from above)\n//\n// ═══════════════════════════════════════════════════════════════════════════\n\nif (flow.get(\"safety_kill_active\") === true) return null;\n\nconst ch = msg.payload || {};\nconst c = msg.control || {};\nconst fleet_id = msg.router?.fleet_id || \"\";\nconst vessel_id = msg.router?.vessel_id || flow.get(\"active_vessel_id\");\nif (!vessel_id) return null;\n\n\n// ═══════════════════════════════════════════════════════════\n// ARM CHECK — CH5 > 0 = armed, <= 0 = disarmed\n// When disarmed: zero packet is still sent to keep ESP deadman alive\n// ═══════════════════════════════════════════════════════════\n\nconst armed = (ch.ch5 || 0) > 0;\n\n// ═══════════════════════════════════════════════════════════\n// TUNING PARAMETERS\n// ═══════════════════════════════════════════════════════════\n\nconst ZERO_CUTOFF = 0.5;\n\nconst REVERSE_BIAS = {\n  t1: 0.30, t2: 0.30, t3: 0.30, t4: 0.30,\n  t5: 0.30, t6: 0.30, t7: 0.30, t8: 0.30\n};\n\nconst REVERSE_GAIN = {\n  t1: 1 + REVERSE_BIAS.t1, t2: 1 + REVERSE_BIAS.t2,\n  t3: 1 + REVERSE_BIAS.t3, t4: 1 + REVERSE_BIAS.t4,\n  t5: 1 + REVERSE_BIAS.t5, t6: 1 + REVERSE_BIAS.t6,\n  t7: 1 + REVERSE_BIAS.t7, t8: 1 + REVERSE_BIAS.t8\n};\n\nconst DEADBAND = {\n  t1: { forward: 6, reverse: 0 }, t2: { forward: 6, reverse: 0 },\n  t3: { forward: 6, reverse: 0 }, t4: { forward: 6, reverse: 0 },\n  t5: { forward: 6, reverse: 0 }, t6: { forward: 6, reverse: 0 },\n  t7: { forward: 6, reverse: 0 }, t8: { forward: 6, reverse: 0 }\n};\n\n// ═══════════════════════════════════════════════════════════\n// INPUT EXTRACTION\n// ═══════════════════════════════════════════════════════════\n\nfunction inputDeadband(val, db) {\n  return Math.abs(val) < db ? 0 : val;\n}\n\nlet sway = (ch.ch1 || 0);\nlet surge = ch.ch2 || 0;\n\nlet heave = (c.heave_thrust !== undefined)\n  ? inputDeadband(c.heave_thrust, 0.05) * 100\n  : (ch.ch3 || 0);\n\nlet roll = inputDeadband(c.roll_thrust ?? 0, 0.05) * 100;\nlet pitch = inputDeadband(c.pitch_thrust ?? 0, 0.05) * 100;\nlet yaw = inputDeadband(c.yaw_thrust ?? 0, 0.05) * 100;\n\n// ═══════════════════════════════════════════════════════════\n// MIXER EQUATIONS\n// ═══════════════════════════════════════════════════════════\n\nlet thr1 = surge - sway - yaw;\nlet thr2 = -surge - sway - yaw;\nlet thr3 = -surge + sway - yaw;\nlet thr4 = surge + sway - yaw;\n\nlet thr5 = -heave - roll - pitch;\nlet thr6 = heave - roll + pitch;\nlet thr7 = -heave + roll + pitch;\nlet thr8 = heave + roll - pitch;\n\nlet thr = [thr1, thr2, thr3, thr4, thr5, thr6, thr7, thr8];\n\n// ═══════════════════════════════════════════════════════════\n// FIRST NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_cmd = Math.max(...thr.map(Math.abs));\nif (max_cmd > 100) {\n  const scale = 100 / max_cmd;\n  thr = thr.map(t => t * scale);\n}\n\n// ═══════════════════════════════════════════════════════════\n// REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction reverse_compensate(val, gain) {\n  return (val < 0) ? val * gain : val;\n}\n\nthr[0] = reverse_compensate(thr[0], REVERSE_GAIN.t1);\nthr[1] = reverse_compensate(thr[1], REVERSE_GAIN.t2);\nthr[2] = reverse_compensate(thr[2], REVERSE_GAIN.t3);\nthr[3] = reverse_compensate(thr[3], REVERSE_GAIN.t4);\nthr[4] = reverse_compensate(thr[4], REVERSE_GAIN.t5);\nthr[5] = reverse_compensate(thr[5], REVERSE_GAIN.t6);\nthr[6] = reverse_compensate(thr[6], REVERSE_GAIN.t7);\nthr[7] = reverse_compensate(thr[7], REVERSE_GAIN.t8);\n\n// ═══════════════════════════════════════════════════════════\n// DEADBAND COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction deadband_compensate(val, fwd_db, rev_db) {\n  if (val > ZERO_CUTOFF) {\n    return fwd_db + (val / 100) * (100 - fwd_db);\n  } else if (val < -ZERO_CUTOFF) {\n    return -(rev_db + (Math.abs(val) / 100) * (100 - rev_db));\n  }\n  return 0;\n}\n\nthr[0] = deadband_compensate(thr[0], DEADBAND.t1.forward, DEADBAND.t1.reverse);\nthr[1] = deadband_compensate(thr[1], DEADBAND.t2.forward, DEADBAND.t2.reverse);\nthr[2] = deadband_compensate(thr[2], DEADBAND.t3.forward, DEADBAND.t3.reverse);\nthr[3] = deadband_compensate(thr[3], DEADBAND.t4.forward, DEADBAND.t4.reverse);\nthr[4] = deadband_compensate(thr[4], DEADBAND.t5.forward, DEADBAND.t5.reverse);\nthr[5] = deadband_compensate(thr[5], DEADBAND.t6.forward, DEADBAND.t6.reverse);\nthr[6] = deadband_compensate(thr[6], DEADBAND.t7.forward, DEADBAND.t7.reverse);\nthr[7] = deadband_compensate(thr[7], DEADBAND.t8.forward, DEADBAND.t8.reverse);\n\n// ═══════════════════════════════════════════════════════════\n// SECOND NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_final = Math.max(...thr.map(Math.abs));\nif (max_final > 100) {\n  const scale_final = 100 / max_final;\n  thr = thr.map(t => t * scale_final);\n}\n\n// ═══════════════════════════════════════════════════════════\n// CLAMP + ARM GATE\n// If disarmed, override all outputs to zero.\n// Zero packet is still sent to keep ESP deadman timer alive.\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v) {\n  return Math.max(-100, Math.min(100, Math.round(v)));\n}\n\nconst thrClamped = armed ? thr.map(clamp) : [0, 0, 0, 0, 0, 0, 0, 0];\n\n// Cache latest output for cross-vessel latching/replay\nflow.set(`veh_last::${vessel_id}`, {\n  fleet_id,\n  vessel_id,\n  thr: thrClamped,\n  craft_type: 1, // ROV\n  craft_id: Number(\n    flow.get(`udp_craft_id::${String(vessel_id).trim().toLowerCase()}`) ??\n    flow.get(`udp_craft_id::${vessel_id}`) ??\n    1\n  ),\n  ts: Date.now()\n});\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 1: MQTT (simulator / debug — remove once UDP proven)\n// ═══════════════════════════════════════════════════════════\n\nconst mqttMsg = {\n  topic: `fleet/${fleet_id}/vessels/${vessel_id}/thrusters/set`,\n  payload: { thr: thrClamped, armed }\n};\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 0: UDP binary packet\n// ═══════════════════════════════════════════════════════════\n\nconst vesselKey = String(vessel_id || \"\").trim().toLowerCase();\nconst udp_ip = flow.get(`udp_ip::${vesselKey}`) || flow.get(`udp_ip::${vessel_id}`) || null;\n\n// Use same lookup order as cache + correct default craft_id\nconst craft_id = Number(\n  flow.get(`udp_craft_id::${vesselKey}`) ??\n  flow.get(`udp_craft_id::${vessel_id}`) ??\n  1\n);\n\n// Optional per-vessel enable switch (default true)\nconst enabled = flow.get(`vessel_enabled::${vessel_id}`);\nif (enabled === false) {\n  // Output order is [MQTT, UDP]\n  return [mqttMsg, null];\n}\n\n// No UDP IP yet: still publish MQTT debug/sim command\nif (!udp_ip) {\n  return [mqttMsg, null];\n}\n\n// Build 18-byte packet:\n//   byte 0:     craft_type = 1 (ROV8)\n//   byte 1:     craft_id\n//   bytes 2-17: T1..T8 as int16 little-endian, scaled x10\n//               (-100 → -1000, +100 → +1000)\n//   All zeros when disarmed\nconst buf = Buffer.alloc(18);\nbuf.writeUInt8(1, 0);\nbuf.writeUInt8(craft_id, 1);\n\nfor (let i = 0; i < 8; i++) {\n  const val = Math.max(-1000, Math.min(1000, Math.round(thrClamped[i] * 10)));\n  buf.writeInt16LE(val, 2 + i * 2);\n}\n\nconst udpMsg = {\n  payload: buf,\n  ip: udp_ip,\n  port: 14560\n};\n\n// Output order is [MQTT, UDP]\nreturn [mqttMsg, udpMsg];\n",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -803,10 +806,11 @@
         "y": 1500,
         "wires": [
             [
-                "850bc2662c5c3570"
+                "a224cae1"
             ],
             [
-                "1c23065f42a774fd"
+                "1c23065f42a774fd",
+                "850bc2662c5c3570"
             ]
         ]
     },
@@ -849,7 +853,7 @@
         "y": 1900,
         "wires": [
             [
-                "850bc2662c5c3570"
+                "a224cae1"
             ],
             [
                 "1c23065f42a774fd"
@@ -949,7 +953,7 @@
         "z": "ddadc02b",
         "g": "8f2c3f72b3b70495",
         "name": "debug 10",
-        "active": false,
+        "active": true,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -1061,8 +1065,8 @@
         "topic": "",
         "payload": "$flowContext(\"fleet_table\", [])",
         "payloadType": "jsonata",
-        "x": 1030,
-        "y": 420,
+        "x": 950,
+        "y": 400,
         "wires": [
             [
                 "b8d1619123c6be0f"
@@ -1082,7 +1086,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1200,
+        "x": 1160,
         "y": 420,
         "wires": [
             [
@@ -1123,7 +1127,7 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "Heartbeat Trigger",
-        "func": "// Fetch last known channels from flow context\nconst lastChannels = flow.get('last_channels') || {};\n\n// If no channels stored yet, don't pass anything\nif (Object.keys(lastChannels).length === 0) {\n    return null;  // Don't trigger until we have real data\n}\n\n// Pass through with router info\nmsg.payload = lastChannels;\nmsg.router = flow.get('last_router');\n\nreturn msg;",
+        "func": "const lastChannels = flow.get(\"last_channels\") || {};\nconst r = flow.get(\"last_router\");\nconst ts = Number(flow.get(\"last_router_ts\") || 0);\nif (!r || !r.vessel_id) return null;\nif (Date.now() - ts > 1000) return null;\nmsg.payload = lastChannels;\nmsg.router = r;\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -1131,11 +1135,12 @@
         "finalize": "",
         "libs": [],
         "x": 470,
-        "y": 1620,
+        "y": 1600,
         "wires": [
             [
                 "8af6712c",
-                "a9401ed12101439c"
+                "a9401ed12101439c",
+                "e5625775393b8c11"
             ]
         ]
     },
@@ -1617,7 +1622,7 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "Lights Control (CH9)",
-        "func": "// === ROV Lights Controller with Change Detection & Rate Limiting ===\n// Only publish when CH9 state changes OR every 15 seconds\n\nconst ch = msg.payload || {};\nconst router = msg.router || {};\n\n// Only process if we have routing info\nif (!router.fleet_id || !router.vessel_id) {\n    return null;\n}\n\n// Read CH9 value (-100 to +100)\nconst ch9 = Number(ch.ch9 || -100);\n\n// Determine ON/OFF state (threshold at 0)\nconst newState = (ch9 > 0) ? \"ON\" : \"OFF\";\n\n// Context keys for this vessel\nconst vessel_id = router.vessel_id;\nconst keyLastState = `lights:lastState:${vessel_id}`;\nconst keyLastPublish = `lights:lastPublish:${vessel_id}`;\n\n// Get previous state and last publish time\nconst lastState = context.get(keyLastState);\nconst lastPublish = context.get(keyLastPublish) || 0;\nconst nowMs = Date.now();\n\n// Decide whether to publish\nlet shouldPublish = false;\n\n// Publish if state changed\nif (newState !== lastState) {\n    shouldPublish = true;\n}\n// Or if 15 seconds elapsed since last publish\nelse if (nowMs - lastPublish > 15000) {\n    shouldPublish = true;\n}\n\nif (!shouldPublish) {\n    return null;  // Skip publish\n}\n\n// Update context\ncontext.set(keyLastState, newState);\ncontext.set(keyLastPublish, nowMs);\n\n// Build MQTT topic\nconst topic = `fleet/${router.fleet_id}/vessels/${router.vessel_id}/lights/set`;\n\nreturn {\n    topic: topic,\n    payload: newState\n};",
+        "func": "const ch = msg.payload || {};\nconst router = msg.router || {};\nif (!router.fleet_id || !router.vessel_id) return null;\n\nconst vessel_id = router.vessel_id;\nconst ch9 = Number(ch.ch9 ?? -100);\n\n// Hysteresis: avoid chatter around zero\nconst ON_THR = 20;\nconst OFF_THR = -20;\n\nconst keyState = `lights:lastState:${vessel_id}`;\nconst keyPubTs = `lights:lastPubTs:${vessel_id}`;\nlet lastState = context.get(keyState); // \"ON\" | \"OFF\" | null\nconst now = Date.now();\n\nlet newState = lastState;\nif (lastState !== \"ON\" && ch9 >= ON_THR) newState = \"ON\";\nelse if (lastState !== \"OFF\" && ch9 <= OFF_THR) newState = \"OFF\";\n\n// init state once without publish flood\nif (!lastState) {\n  lastState = (ch9 > 0) ? \"ON\" : \"OFF\";\n  context.set(keyState, lastState);\n  context.set(keyPubTs, now);\n  return null;\n}\n\nconst changed = newState !== lastState;\nconst keepaliveMs = 60000;\nconst lastPub = Number(context.get(keyPubTs) || 0);\nconst keepaliveDue = (now - lastPub) >= keepaliveMs;\n\nif (!changed && !keepaliveDue) return null;\n\ncontext.set(keyState, newState);\ncontext.set(keyPubTs, now);\n\nreturn {\n  topic: `fleet/${router.fleet_id}/vessels/${router.vessel_id}/lights/set`,\n  payload: newState\n};\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -1655,14 +1660,14 @@
         "z": "ddadc02b",
         "g": "8f2c3f72b3b70495",
         "name": "Pick driver hostname from manifest",
-        "func": "// === UDP Driver Hostname Resolver (Manifest-Based) ===\n//\n// PURPOSE\n// -------\n// Given a vessel_id (e.g. \"tender-01\" or \"rov-01\"),\n// determine the correct UDP thruster target hostname.\n//\n// This avoids \"last announce wins\" behaviour.\n// Instead, the manifest is the single source of truth.\n//\n// HOW IT WORKS\n// ------------\n// 1. Read vessel_id from msg.vessel_id (or msg.router.vessel_id).\n// 2. Load global.fleet_manifest.devices.\n// 3. Find the device where:\n//      - device.vessel_id matches\n//      - device.role includes \"driver\"\n// 4. Build hostname as:  <device.name>.local\n// 5. Store hostname in:\n//      flow.udp_hostname::<vessel_id>\n// 6. Pass hostname forward for mDNS resolution.\n//\n// DESIGN NOTES\n// ------------\n// - Deterministic: does NOT depend on which device announced last.\n// - Safe for multi-device fleets.\n// - If no driver found, backs off for 30s to prevent log spam.\n// - Does NOT clear existing udp_ip on failure.\n//\n// FUTURE EXPANSION\n// ----------------\n// If vessels later support multiple drivers (front/rear):\n// - Add \"driver_segment\" to manifest.\n// - Cache per segment as:\n//     udp_ip::<vessel_id>::<segment>\n// - Mixer can then split thruster packets per segment.\n//\n\nconst vessel_id = msg.vessel_id || msg.router?.vessel_id;\nif (!vessel_id) return null;\n\n// Backoff gate (prevents spam when device is off)\nconst nextTryKey = `udp_next_try::${vessel_id}`;\nconst nextTry = flow.get(nextTryKey) || 0;\nif (Date.now() < nextTry) return null;\n\nconst manifest = global.get('fleet_manifest');\nif (!manifest || !manifest.devices) {\n  node.warn('No global.fleet_manifest.devices found');\n  return null;\n}\n\n// Find driver device for this vessel\nlet chosen = null;\nfor (const [mac, dev] of Object.entries(manifest.devices)) {\n  if (!dev || dev.vessel_id !== vessel_id) continue;\n  const roles = Array.isArray(dev.role) ? dev.role : [dev.role];\n  if (roles.includes('driver')) { chosen = dev; break; }\n}\n\nif (!chosen || !chosen.name) {\n  node.warn(`No driver device found in manifest for vessel=${vessel_id}`);\n  // backoff a bit\n  flow.set(nextTryKey, Date.now() + 30000);\n  return null;\n}\n\nconst hostname = `${chosen.name}.local`;\nmsg.hostname = hostname;\nmsg.payload = hostname; // for Exec append\nmsg.vessel_id = vessel_id;\n\n// Save hostname (handy for debugging)\nflow.set(`udp_hostname::${vessel_id}`, hostname);\n\nreturn msg;",
+        "func": "// === UDP Driver Hostname Resolver (Manifest-Based) ===\n//\n// PURPOSE\n// -------\n// Given a vessel_id (e.g. \"tender-01\" or \"rov-01\"),\n// determine the correct UDP thruster target hostname.\n//\n// This avoids \"last announce wins\" behaviour.\n// Instead, the manifest is the single source of truth.\n//\n// HOW IT WORKS\n// ------------\n// 1. Read vessel_id from msg.vessel_id (or msg.router.vessel_id).\n// 2. Load global.fleet_manifest.devices.\n// 3. Find the device where:\n//      - device.vessel_id matches\n//      - device.role includes \"driver\"\n// 4. Build hostname as:  <device.name>.local\n// 5. Store hostname in:\n//      flow.udp_hostname::<vessel_id>\n// 6. Pass hostname forward for mDNS resolution.\n//\n// DESIGN NOTES\n// ------------\n// - Deterministic: does NOT depend on which device announced last.\n// - Safe for multi-device fleets.\n// - If no driver found, backs off for 30s to prevent log spam.\n// - Does NOT clear existing udp_ip on failure.\n//\n// FUTURE EXPANSION\n// ----------------\n// If vessels later support multiple drivers (front/rear):\n// - Add \"driver_segment\" to manifest.\n// - Cache per segment as:\n//     udp_ip::<vessel_id>::<segment>\n// - Mixer can then split thruster packets per segment.\n//\n// Pick driver hostname from manifest (replace function body)\nconst vessel_id = msg.vessel_id || msg.router?.vessel_id;\nif (!vessel_id) return null;\n\nconst nextTryKey = `udp_next_try::${vessel_id}`;\nconst nextTry = flow.get(nextTryKey) || 0;\nif (Date.now() < nextTry) return null;\n\nconst manifest = global.get(\"fleet_manifest\");\nif (!manifest || !manifest.devices) {\n  node.warn(\"No global.fleet_manifest.devices found\");\n  return null;\n}\n\nlet chosen = null;\nfor (const [, dev] of Object.entries(manifest.devices)) {\n  if (!dev || dev.vessel_id !== vessel_id) continue;\n  const roles = Array.isArray(dev.role) ? dev.role : [dev.role];\n  const roleNorm = roles.map(r => String(r || \"\").trim().toLowerCase());\n  if (roleNorm.includes(\"driver\")) {\n    chosen = dev;\n    break;\n  }\n}\n\nif (!chosen || !chosen.name) {\n  node.warn(`No driver device found in manifest for vessel=${vessel_id}`);\n  flow.set(nextTryKey, Date.now() + 30000);\n  return null;\n}\n\nconst hostname = `${chosen.name}.local`;\nmsg.hostname = hostname;\nmsg.payload = hostname;\nmsg.vessel_id = vessel_id;\nflow.set(`udp_hostname::${vessel_id}`, hostname);\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 860,
+        "x": 900,
         "y": 500,
         "wires": [
             [
@@ -1723,7 +1728,7 @@
         "props": [
             {
                 "p": "vessel_id",
-                "v": "tender-01",
+                "v": "rov-02",
                 "vt": "str"
             }
         ],
@@ -1764,7 +1769,7 @@
         "z": "ddadc02b",
         "g": "8f2c3f72b3b70495",
         "name": "function 2",
-        "func": "flow.set(\"udp_ip::tender-01\", \"172.16.10.169\");\nflow.set(\"udp_craft_id::tender-01\", 1);\n\nreturn msg;\n",
+        "func": "flow.set(\"last_router\", null);\nflow.set(\"last_router_ts\", 0);\nflow.set(\"active_vessel_id\", null);\n\n\n\n\n//flow.set(\"udp_ip::tender-01\", \"172.16.10.169\");\n//flow.set(\"udp_craft_id::tender-01\", 1);\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -1890,8 +1895,63 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 2060,
-        "y": 1520,
+        "x": 2020,
+        "y": 1860,
+        "wires": []
+    },
+    {
+        "id": "e5625775393b8c11",
+        "type": "debug",
+        "z": "ddadc02b",
+        "g": "205ea8dd1b87c603",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 1560,
+        "wires": []
+    },
+    {
+        "id": "8d3b8d6c4c1f9a01",
+        "type": "inject",
+        "z": "ddadc02b",
+        "g": "205ea8dd1b87c603",
+        "name": "Init UDP IPs",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "",
+        "x": 170,
+        "y": 1680,
+        "wires": [
+            [
+                "a7f3e2f0b6c4d912"
+            ]
+        ]
+    },
+    {
+        "id": "a7f3e2f0b6c4d912",
+        "type": "function",
+        "z": "ddadc02b",
+        "g": "205ea8dd1b87c603",
+        "name": "Set Static UDP IPs",
+        "func": "flow.set(\"udp_ip::rov-02\", \"172.16.10.20\");\nflow.set(\"udp_ip::tender-01\", \"172.16.10.30\");\nreturn null;",
+        "outputs": 0,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 1660,
         "wires": []
     },
     {
