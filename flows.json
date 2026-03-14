@@ -28,6 +28,13 @@
         "info": ""
     },
     {
+        "id": "a200000000000001",
+        "type": "tab",
+        "label": "ROV Tuning Live Loader",
+        "disabled": false,
+        "info": ""
+    },
+    {
         "id": "36111db6a1db43f1",
         "type": "group",
         "z": "ddadc02b",
@@ -45,7 +52,7 @@
         ],
         "x": 54,
         "y": -1,
-        "w": 1192,
+        "w": 1252,
         "h": 142
     },
     {
@@ -80,9 +87,9 @@
             "b51b48309e588f09"
         ],
         "x": 54,
-        "y": 179,
-        "w": 1252,
-        "h": 502
+        "y": 219,
+        "w": 1752,
+        "h": 722
     },
     {
         "id": "205ea8dd1b87c603",
@@ -113,9 +120,9 @@
             "8d3b8d6c4c1f9a01",
             "a7f3e2f0b6c4d912"
         ],
-        "x": 54,
-        "y": 1459,
-        "w": 2132,
+        "x": 14,
+        "y": 2159,
+        "w": 2112,
         "h": 482
     },
     {
@@ -150,9 +157,9 @@
             "ea0f70603440f378",
             "af03ff243ebf6558"
         ],
-        "x": 54,
-        "y": 739,
-        "w": 1252,
+        "x": 14,
+        "y": 1499,
+        "w": 2112,
         "h": 622
     },
     {
@@ -497,7 +504,7 @@
         "rh": 0,
         "inputs": 0,
         "x": 170,
-        "y": 240,
+        "y": 280,
         "wires": [
             [
                 "203e64e8",
@@ -519,7 +526,7 @@
         "finalize": "",
         "libs": [],
         "x": 560,
-        "y": 220,
+        "y": 260,
         "wires": [
             [
                 "46c764bd"
@@ -542,7 +549,7 @@
         "expiry": "",
         "broker": "7ac3dc6d59d7b607",
         "x": 1180,
-        "y": 220,
+        "y": 260,
         "wires": []
     },
     {
@@ -559,7 +566,7 @@
         "finalize": "",
         "libs": [],
         "x": 550,
-        "y": 300,
+        "y": 340,
         "wires": [
             [
                 "dca3efc5",
@@ -583,7 +590,7 @@
         "rh": 0,
         "inputs": 0,
         "x": 180,
-        "y": 420,
+        "y": 460,
         "wires": [
             [
                 "62c8fb9141e66627"
@@ -604,7 +611,7 @@
         "finalize": "",
         "libs": [],
         "x": 560,
-        "y": 360,
+        "y": 400,
         "wires": [
             [
                 "dca3efc5"
@@ -696,7 +703,7 @@
         "outputs": 0,
         "cts": false,
         "x": 1180,
-        "y": 300,
+        "y": 340,
         "wires": []
     },
     {
@@ -713,8 +720,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 220,
-        "y": 1880,
+        "x": 180,
+        "y": 2580,
         "wires": [
             [
                 "c0ef9c76",
@@ -735,8 +742,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 1740,
+        "x": 430,
+        "y": 2440,
         "wires": [
             [
                 "8af6712c"
@@ -756,8 +763,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 1620,
+        "x": 780,
+        "y": 2320,
         "wires": [
             [
                 "2936edf8",
@@ -774,15 +781,15 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "ROV Flight Mode Mixer (manual/stable/gps)",
-        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV FLIGHT MODE CONTROLLER - MANUAL / STABLE / MAG (GPS POSITION HOLD)\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// FLIGHT MODES:\n// -------------\n// MANUAL: Direct stick control, no stabilization\n//   - Raw body-frame stick passthrough, no corrections\n//   - Full pilot authority on all axes\n//\n// STABLE: Attitude/heading/depth hold with world-frame stick input\n//   - Holds roll, pitch, yaw (heading), and depth at target setpoints\n//   - Stick inputs transformed from world-frame to body-frame so that\n//     \"forward\" is always forward relative to the water surface regardless\n//     of current roll/pitch angle\n//   - Pilot trims targets by moving sticks (setpoints follow stick input)\n//   - PID control: P + I + D with gyro rate damping\n//\n// MAG: GPS position hold + attitude/depth hold\n//   - Same world-frame stick transform as STABLE\n//   - Additionally holds GPS lat/lon position\n//   - Forces level flight (roll=0, pitch=0) for stable GPS tracking\n//   - GPS errors converted to body-frame tilt commands\n//   - Future: waypoint following / autonomous nav\n//\n// WORLD-TO-BODY STICK TRANSFORM (STABLE + MAG):\n// -----------------------------------------------\n// Pilot stick intent is in world-frame (relative to water surface).\n// The transform rotates surge/sway/heave through current roll and pitch\n// so the ROV moves as the pilot expects regardless of its attitude.\n//\n//   body_surge = heave_w·sin(p)           + surge_w·cos(p)\n//   body_sway  = heave_w·sin(r)·cos(p)   + sway_w·cos(r)\n//   body_heave = heave_w·cos(p)·cos(r)   - sway_w·sin(r) - surge_w·sin(p)\n//\n// Rotational axes (roll/pitch/yaw corrections from PID) are already in\n// body-frame and are NOT transformed.\n//\n// CONTROL THEORY:\n// ---------------\n// PID: Output = P×error + I×∫error·dt + D×dError/dt\n//   P: immediate response, can oscillate without damping\n//   I: eliminates steady-state error (buoyancy, current, drift)\n//   D: damping via gyro rates, prevents overshoot\n//\n// TUNING GUIDE:\n// -------------\n// 1. DEPTH HOLD:    P=0.3, I=0.05 (increase P until hold, I for offset)\n// 2. HEADING HOLD:  P=0.2, I=0.02, D=0.06\n// 3. ROLL STAB:     P=0.5, D=0.2  (no I-term)\n// 4. PITCH STAB:    P=0.5, D=0.2  (no I-term)\n// 5. GPS HOLD:      P=0.15, deadzone=1.0m, max_tilt=0.3\n//\n// SYMPTOMS AND FIXES:\n// -------------------\n// • Oscillation       → reduce P or increase D\n// • Slow response     → increase P\n// • Steady offset     → increase I\n// • Jerky corrections → increase slew limits or filter alpha\n// • GPS hunting       → increase gps_deadzone or reduce gps_P\n// • Depth yo-yos      → check buoyancy first, then reduce depth_P\n//\n// ═══════════════════════════════════════════════════════════════════════════\n\n// ═══════════════════════════════════════════════════════════\n// TUNABLE PARAMETERS\n// ═══════════════════════════════════════════════════════════\n\nconst PARAMS = {\n  deadband: 5,\n\n  heading_trim_rate: 0.5,\n  roll_trim_rate: 0.3,\n  pitch_trim_rate: 0.3,\n  depth_trim_rate: 0.05,\n\n  heading_P: 0.2,\n  roll_P: 0.3,\n  pitch_P: 0.3,\n  depth_P: 0.3,\n\n  depth_I: 0.05,\n  heading_I: 0.02,\n\n  roll_D: 0.2,\n  pitch_D: 0.2,\n  yaw_D: 0.06,\n\n  depth_I_max: 0.3,\n  heading_I_max: 0.2,\n\n  correction_exponent: 1.3,\n\n  gps_P: 0.15,\n  gps_max_tilt: 0.3,\n  gps_deadzone: 1.0,\n  gps_jump_threshold: 10,\n  gps_slew_rate: 0.05,\n\n  meters_per_deg_lat: 111000,\n  meters_per_deg_lon: 88000,\n\n  roll_slew: 0.1,\n  pitch_slew: 0.1,\n  yaw_slew: 0.1,\n  heave_slew: 0.1,\n\n  gyro_filter_alpha: 0.3,\n  max_sensor_age: 2000,\n};\n\n// ═══════════════════════════════════════════════════════════\n// UTILITY FUNCTIONS\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v, min = -1, max = 1) {\n  return Math.max(min, Math.min(max, v));\n}\n\nfunction applyDeadband(value, deadband) {\n  return Math.abs(value) < deadband ? 0 : value;\n}\n\nfunction nonlinearCorrection(error, baseGain, exponent = PARAMS.correction_exponent) {\n  const sign = Math.sign(error);\n  const magnitude = Math.abs(error);\n  return sign * baseGain * Math.pow(magnitude, exponent);\n}\n\nfunction slewLimit(current, target, maxDelta) {\n  const delta = target - current;\n  if (Math.abs(delta) <= maxDelta) return target;\n  return current + Math.sign(delta) * maxDelta;\n}\n\n// Rotate world-frame stick inputs into body-frame using current roll/pitch.\n// Inputs are in percent [-100, 100], output is also in percent [-100, 100].\n// roll_deg and pitch_deg come from the IMU (ch.roll, ch.pitch).\nfunction worldToBody(surge_w, sway_w, heave_w, roll_deg, pitch_deg) {\n  const r = roll_deg * Math.PI / 180;\n  const p = pitch_deg * Math.PI / 180;\n  return {\n    surge: heave_w * Math.sin(p) + surge_w * Math.cos(p),\n    sway: heave_w * Math.sin(r) * Math.cos(p) + sway_w * Math.cos(r),\n    heave: heave_w * Math.cos(p) * Math.cos(r) - sway_w * Math.sin(r) - surge_w * Math.sin(p)\n  };\n}\n\n// ═══════════════════════════════════════════════════════════\n// EXTRACT INPUT DATA\n// ═══════════════════════════════════════════════════════════\n\nconst ch = msg.payload || {};\nconst vessel_id = msg.router?.vessel_id || 'rov-unknown';\n\n// ═══════════════════════════════════════════════════════════\n// PERSISTENT STATE - CONTEXT KEYS\n// ═══════════════════════════════════════════════════════════\n\nconst keyLast = `rov:lastMode:${vessel_id}`;\nconst keyHead = `rov:targetHeading:${vessel_id}`;\nconst keyRoll = `rov:targetRoll:${vessel_id}`;\nconst keyPitch = `rov:targetPitch:${vessel_id}`;\nconst keyLat = `rov:targetLat:${vessel_id}`;\nconst keyLon = `rov:targetLon:${vessel_id}`;\nconst keyDepth = `rov:targetDepth:${vessel_id}`;\n\nconst keyDepthI = `rov:depthIntegral:${vessel_id}`;\nconst keyHeadingI = `rov:headingIntegral:${vessel_id}`;\n\nconst keyPrevRoll = `rov:prevRollCorr:${vessel_id}`;\nconst keyPrevPitch = `rov:prevPitchCorr:${vessel_id}`;\nconst keyPrevYaw = `rov:prevYawCorr:${vessel_id}`;\nconst keyPrevHeave = `rov:prevHeaveCorr:${vessel_id}`;\nconst keyPrevGPSRoll = `rov:prevGPSRollCorr:${vessel_id}`;\nconst keyPrevGPSPitch = `rov:prevGPSPitchCorr:${vessel_id}`;\n\nconst keyPrevNorth = `rov:prevNorthErr:${vessel_id}`;\nconst keyPrevEast = `rov:prevEastErr:${vessel_id}`;\n\nconst keyFilteredRollRate = `rov:filteredRollRate:${vessel_id}`;\nconst keyFilteredPitchRate = `rov:filteredPitchRate:${vessel_id}`;\nconst keyFilteredYawRate = `rov:filteredYawRate:${vessel_id}`;\n\nconst keyLastGyroTime = `rov:lastGyroTime:${vessel_id}`;\nconst keyLastDepthTime = `rov:lastDepthTime:${vessel_id}`;\nconst keyLastGPSTime = `rov:lastGPSTime:${vessel_id}`;\n\n// ═══════════════════════════════════════════════════════════\n// RESTORE PERSISTENT STATE\n// ═══════════════════════════════════════════════════════════\n\nlet lastMode = context.get(keyLast);\nlet targetHeading = context.get(keyHead);\nlet targetRoll = context.get(keyRoll);\nlet targetPitch = context.get(keyPitch);\nlet targetLat = context.get(keyLat);\nlet targetLon = context.get(keyLon);\nlet targetDepth = context.get(keyDepth);\nlet depthIntegral = context.get(keyDepthI) || 0;\nlet headingIntegral = context.get(keyHeadingI) || 0;\n\nlet prevRollCorr = context.get(keyPrevRoll) || 0;\nlet prevPitchCorr = context.get(keyPrevPitch) || 0;\nlet prevYawCorr = context.get(keyPrevYaw) || 0;\nlet prevHeaveCorr = context.get(keyPrevHeave) || 0;\nlet prevGPSRollCorr = context.get(keyPrevGPSRoll) || 0;\nlet prevGPSPitchCorr = context.get(keyPrevGPSPitch) || 0;\n\nlet filteredRollRate = context.get(keyFilteredRollRate) || 0;\nlet filteredPitchRate = context.get(keyFilteredPitchRate) || 0;\nlet filteredYawRate = context.get(keyFilteredYawRate) || 0;\n\n// ═══════════════════════════════════════════════════════════\n// SENSOR STALENESS CHECK\n// ═══════════════════════════════════════════════════════════\n\nconst nowMs = Date.now();\n\nlet lastGyroTime = context.get(keyLastGyroTime);\nlet lastDepthTime = context.get(keyLastDepthTime);\nlet lastGPSTime = context.get(keyLastGPSTime);\n\nif (typeof ch.roll_rate === 'number' && typeof ch.pitch_rate === 'number' && typeof ch.yaw_rate === 'number') {\n  lastGyroTime = nowMs;\n  context.set(keyLastGyroTime, nowMs);\n}\n\nif (typeof ch.depth === 'number') {\n  lastDepthTime = nowMs;\n  context.set(keyLastDepthTime, nowMs);\n}\n\nif (typeof ch.lat === 'number' && typeof ch.lon === 'number') {\n  lastGPSTime = nowMs;\n  context.set(keyLastGPSTime, nowMs);\n}\n\nconst gyroStale = (typeof lastGyroTime !== 'number') || (nowMs - lastGyroTime > PARAMS.max_sensor_age);\nconst depthStale = (typeof lastDepthTime !== 'number') || (nowMs - lastDepthTime > PARAMS.max_sensor_age);\nconst gpsStale = (typeof lastGPSTime !== 'number') || (nowMs - lastGPSTime > PARAMS.max_sensor_age);\n\n// ═══════════════════════════════════════════════════════════\n// MODE DETECTION AND TRANSITIONS\n// ═══════════════════════════════════════════════════════════\n\nconst mode = ch.flight_mode || 'MANUAL';\n\nfunction resetAllTargets() {\n  targetHeading = null; targetRoll = null; targetPitch = null;\n  targetLat = null; targetLon = null; targetDepth = null;\n  depthIntegral = 0; headingIntegral = 0;\n  prevRollCorr = 0; prevPitchCorr = 0; prevYawCorr = 0; prevHeaveCorr = 0;\n  prevGPSRollCorr = 0; prevGPSPitchCorr = 0;\n  context.set(keyHead, null); context.set(keyRoll, null);\n  context.set(keyPitch, null); context.set(keyLat, null);\n  context.set(keyLon, null); context.set(keyDepth, null);\n  context.set(keyDepthI, 0); context.set(keyHeadingI, 0);\n  context.set(keyPrevRoll, 0); context.set(keyPrevPitch, 0);\n  context.set(keyPrevYaw, 0); context.set(keyPrevHeave, 0);\n  context.set(keyPrevGPSRoll, 0); context.set(keyPrevGPSPitch, 0);\n  context.set(keyPrevNorth, null); context.set(keyPrevEast, null);\n}\n\nif (mode === 'STABLE' && lastMode !== 'STABLE') {\n  targetHeading = (typeof ch.heading === 'number') ? ch.heading : targetHeading;\n  targetRoll = (typeof ch.roll === 'number') ? ch.roll : targetRoll;\n  targetPitch = (typeof ch.pitch === 'number') ? ch.pitch : targetPitch;\n  targetDepth = (typeof ch.depth === 'number') ? ch.depth : 1.0;\n  depthIntegral = 0; headingIntegral = 0;\n  prevRollCorr = 0; prevPitchCorr = 0; prevYawCorr = 0; prevHeaveCorr = 0;\n  context.set(keyHead, targetHeading); context.set(keyRoll, targetRoll);\n  context.set(keyPitch, targetPitch); context.set(keyDepth, targetDepth);\n  context.set(keyDepthI, 0); context.set(keyHeadingI, 0);\n  context.set(keyPrevRoll, 0); context.set(keyPrevPitch, 0);\n  context.set(keyPrevYaw, 0); context.set(keyPrevHeave, 0);\n}\n\nif (mode === 'MAG' && lastMode !== 'MAG') {\n  targetLat = (typeof ch.lat === 'number') ? ch.lat : targetLat;\n  targetLon = (typeof ch.lon === 'number') ? ch.lon : targetLon;\n  targetHeading = (typeof ch.heading === 'number') ? ch.heading : targetHeading;\n  targetRoll = 0; targetPitch = 0;\n  targetDepth = (typeof ch.depth === 'number') ? ch.depth : 1.0;\n  depthIntegral = 0; headingIntegral = 0;\n  prevRollCorr = 0; prevPitchCorr = 0; prevYawCorr = 0; prevHeaveCorr = 0;\n  prevGPSRollCorr = 0; prevGPSPitchCorr = 0;\n  context.set(keyLat, targetLat); context.set(keyLon, targetLon);\n  context.set(keyHead, targetHeading); context.set(keyRoll, targetRoll);\n  context.set(keyPitch, targetPitch); context.set(keyDepth, targetDepth);\n  context.set(keyDepthI, 0); context.set(keyHeadingI, 0);\n  context.set(keyPrevRoll, 0); context.set(keyPrevPitch, 0);\n  context.set(keyPrevYaw, 0); context.set(keyPrevHeave, 0);\n  context.set(keyPrevGPSRoll, 0); context.set(keyPrevGPSPitch, 0);\n  context.set(keyPrevNorth, null); context.set(keyPrevEast, null);\n}\n\nif (mode === 'MANUAL') resetAllTargets();\n\ncontext.set(keyLast, mode);\n\n// ═══════════════════════════════════════════════════════════\n// FILTER GYRO RATES (for D-term)\n// ═══════════════════════════════════════════════════════════\n\nif (!gyroStale) {\n  const alpha = PARAMS.gyro_filter_alpha;\n  filteredRollRate = alpha * (ch.roll_rate || 0) + (1 - alpha) * filteredRollRate;\n  filteredPitchRate = alpha * (ch.pitch_rate || 0) + (1 - alpha) * filteredPitchRate;\n  filteredYawRate = alpha * (ch.yaw_rate || 0) + (1 - alpha) * filteredYawRate;\n  context.set(keyFilteredRollRate, filteredRollRate);\n  context.set(keyFilteredPitchRate, filteredPitchRate);\n  context.set(keyFilteredYawRate, filteredYawRate);\n}\n\n// ═══════════════════════════════════════════════════════════\n// FLIGHT CONTROL LOGIC\n// ═══════════════════════════════════════════════════════════\n\nlet roll_thrust = 0, pitch_thrust = 0, yaw_thrust = 0, heave_thrust = 0;\n\n// ───────────────────────────────────────────────────────────\n// MANUAL MODE - raw body-frame passthrough, no transform\n// ───────────────────────────────────────────────────────────\n\nif (mode === 'MANUAL') {\n  roll_thrust = (ch.ch6 || 0) / 100;\n  pitch_thrust = (ch.ch7 || 0) / 100;\n  yaw_thrust = (ch.ch4 || 0) / 100;\n  heave_thrust = (ch.ch3 || 0) / 100;\n}\n\n// ───────────────────────────────────────────────────────────\n// STABLE MODE\n// ───────────────────────────────────────────────────────────\n\nelse if (mode === 'STABLE') {\n\n  // Rotational sticks - body-frame, used for target trimming only\n  const roll_stick = applyDeadband(ch.ch6 || 0, PARAMS.deadband);\n  const pitch_stick = applyDeadband(ch.ch7 || 0, PARAMS.deadband);\n  const yaw_stick = applyDeadband(ch.ch4 || 0, PARAMS.deadband);\n\n  // Translational sticks - world-frame intent, rotate to body-frame\n  const surge_w = applyDeadband(ch.ch2 || 0, PARAMS.deadband);\n  const sway_w = applyDeadband(ch.ch1 || 0, PARAMS.deadband);\n  const heave_w = applyDeadband(ch.ch3 || 0, PARAMS.deadband);\n  const body = worldToBody(surge_w, sway_w, heave_w, ch.roll || 0, ch.pitch || 0);\n  const heave_stick = body.heave;\n\n  // Overwrite ch so downstream thruster mixer sees body-frame values\n  ch.ch1 = body.sway;\n  ch.ch2 = body.surge;\n  ch.ch3 = body.heave;\n\n  // Target trimming\n  if (roll_stick !== 0 && typeof targetRoll === 'number') {\n    targetRoll += (roll_stick / 100) * PARAMS.roll_trim_rate;\n    targetRoll = clamp(targetRoll, -45, 45);\n    context.set(keyRoll, targetRoll);\n  }\n  if (pitch_stick !== 0 && typeof targetPitch === 'number') {\n    targetPitch += (pitch_stick / 100) * PARAMS.pitch_trim_rate;\n    targetPitch = clamp(targetPitch, -45, 45);\n    context.set(keyPitch, targetPitch);\n  }\n  if (yaw_stick !== 0 && typeof targetHeading === 'number') {\n    targetHeading += (yaw_stick / 100) * PARAMS.heading_trim_rate;\n    targetHeading = ((targetHeading % 360) + 360) % 360;\n    context.set(keyHead, targetHeading);\n    headingIntegral = 0; context.set(keyHeadingI, 0);\n  }\n  if (heave_stick !== 0 && typeof targetDepth === 'number') {\n    targetDepth += (heave_stick / 100) * PARAMS.depth_trim_rate;\n    targetDepth = clamp(targetDepth, 0.5, 100);\n    context.set(keyDepth, targetDepth);\n    depthIntegral = 0; context.set(keyDepthI, 0);\n  }\n\n  // Errors\n  const roll_err = (targetRoll || 0) - (ch.roll || 0);\n  const pitch_err = (targetPitch || 0) - (ch.pitch || 0);\n  let heading_err = 0;\n  if (typeof targetHeading === 'number' && typeof ch.heading === 'number') {\n    heading_err = targetHeading - ch.heading;\n    heading_err = (((heading_err + 180) % 360) + 360) % 360 - 180;\n  }\n  let depth_err = 0;\n  if (typeof targetDepth === 'number' && typeof ch.depth === 'number') {\n    depth_err = targetDepth - ch.depth;\n  }\n\n  // Integrals\n  if (heave_stick === 0 && !depthStale) {\n    depthIntegral += depth_err * PARAMS.depth_I;\n    depthIntegral = clamp(depthIntegral, -PARAMS.depth_I_max, PARAMS.depth_I_max);\n    context.set(keyDepthI, depthIntegral);\n  } else if (depthStale) { depthIntegral = 0; context.set(keyDepthI, 0); }\n\n  if (yaw_stick === 0 && !gyroStale) {\n    headingIntegral += heading_err * PARAMS.heading_I;\n    headingIntegral = clamp(headingIntegral, -PARAMS.heading_I_max, PARAMS.heading_I_max);\n    context.set(keyHeadingI, headingIntegral);\n  } else if (gyroStale) { headingIntegral = 0; context.set(keyHeadingI, 0); }\n\n  // PID\n  let rollCorr = slewLimit(prevRollCorr, nonlinearCorrection(roll_err, PARAMS.roll_P) + (gyroStale ? 0 : -filteredRollRate * PARAMS.roll_D), PARAMS.roll_slew);\n  let pitchCorr = slewLimit(prevPitchCorr, nonlinearCorrection(pitch_err, PARAMS.pitch_P) + (gyroStale ? 0 : -filteredPitchRate * PARAMS.pitch_D), PARAMS.pitch_slew);\n  let yawCorr = slewLimit(prevYawCorr, nonlinearCorrection(heading_err, PARAMS.heading_P) + headingIntegral + (gyroStale ? 0 : -filteredYawRate * PARAMS.yaw_D), PARAMS.yaw_slew);\n  let heaveCorr = slewLimit(prevHeaveCorr, (depthStale ? 0 : nonlinearCorrection(depth_err, PARAMS.depth_P)) + depthIntegral, PARAMS.heave_slew);\n\n  context.set(keyPrevRoll, rollCorr); context.set(keyPrevPitch, pitchCorr);\n  context.set(keyPrevYaw, yawCorr); context.set(keyPrevHeave, heaveCorr);\n\n  roll_thrust = clamp(rollCorr);\n  pitch_thrust = clamp(pitchCorr);\n  yaw_thrust = clamp(yawCorr);\n  heave_thrust = clamp(heaveCorr);\n}\n\n// ───────────────────────────────────────────────────────────\n// MAG MODE\n// ───────────────────────────────────────────────────────────\n\nelse if (mode === 'MAG') {\n\n  // Rotational sticks - body-frame\n  const roll_stick = applyDeadband(ch.ch6 || 0, PARAMS.deadband);\n  const pitch_stick = applyDeadband(ch.ch7 || 0, PARAMS.deadband);\n  const yaw_stick = applyDeadband(ch.ch4 || 0, PARAMS.deadband);\n\n  // Translational sticks - world-frame → body-frame\n  const surge_w = applyDeadband(ch.ch2 || 0, PARAMS.deadband);\n  const sway_w = applyDeadband(ch.ch1 || 0, PARAMS.deadband);\n  const heave_w = applyDeadband(ch.ch3 || 0, PARAMS.deadband);\n  const body = worldToBody(surge_w, sway_w, heave_w, ch.roll || 0, ch.pitch || 0);\n  const heave_stick = body.heave;\n\n  ch.ch1 = body.sway;\n  ch.ch2 = body.surge;\n  ch.ch3 = body.heave;\n\n  // Target trimming (heading + depth only in MAG)\n  if (yaw_stick !== 0 && typeof targetHeading === 'number') {\n    targetHeading += (yaw_stick / 100) * PARAMS.heading_trim_rate;\n    targetHeading = ((targetHeading % 360) + 360) % 360;\n    context.set(keyHead, targetHeading);\n    headingIntegral = 0; context.set(keyHeadingI, 0);\n  }\n  if (heave_stick !== 0 && typeof targetDepth === 'number') {\n    targetDepth += (heave_stick / 100) * PARAMS.depth_trim_rate;\n    targetDepth = clamp(targetDepth, 0.5, 100);\n    context.set(keyDepth, targetDepth);\n    depthIntegral = 0; context.set(keyDepthI, 0);\n  }\n\n  // Errors\n  const roll_err = (targetRoll || 0) - (ch.roll || 0);\n  const pitch_err = (targetPitch || 0) - (ch.pitch || 0);\n  let heading_err = 0;\n  if (typeof targetHeading === 'number' && typeof ch.heading === 'number') {\n    heading_err = targetHeading - ch.heading;\n    heading_err = (((heading_err + 180) % 360) + 360) % 360 - 180;\n  }\n  let depth_err = 0;\n  if (typeof targetDepth === 'number' && typeof ch.depth === 'number') {\n    depth_err = targetDepth - ch.depth;\n  }\n\n  // GPS position hold\n  let gps_roll_corr = 0, gps_pitch_corr = 0;\n\n  if (!gpsStale &&\n    typeof targetLat === 'number' && typeof ch.lat === 'number' &&\n    typeof targetLon === 'number' && typeof ch.lon === 'number' &&\n    typeof ch.heading === 'number') {\n\n    const north_err_m = (targetLat - ch.lat) * PARAMS.meters_per_deg_lat;\n    const east_err_m = (targetLon - ch.lon) * PARAMS.meters_per_deg_lon;\n\n    const prevNorthErr = context.get(keyPrevNorth);\n    const prevEastErr = context.get(keyPrevEast);\n    const havePrev = (typeof prevNorthErr === 'number') && (typeof prevEastErr === 'number');\n\n    if (!havePrev) {\n      context.set(keyPrevNorth, north_err_m);\n      context.set(keyPrevEast, east_err_m);\n    } else if (\n      Math.abs(north_err_m - prevNorthErr) > PARAMS.gps_jump_threshold ||\n      Math.abs(east_err_m - prevEastErr) > PARAMS.gps_jump_threshold\n    ) {\n      // GPS glitch - skip this cycle\n    } else {\n      context.set(keyPrevNorth, north_err_m);\n      context.set(keyPrevEast, east_err_m);\n\n      const headingRad = (ch.heading * Math.PI) / 180;\n      const surge_err_m = north_err_m * Math.cos(headingRad) + east_err_m * Math.sin(headingRad);\n      const sway_err_m = -north_err_m * Math.sin(headingRad) + east_err_m * Math.cos(headingRad);\n\n      if (Math.abs(surge_err_m) > PARAMS.gps_deadzone) gps_pitch_corr = surge_err_m * PARAMS.gps_P;\n      if (Math.abs(sway_err_m) > PARAMS.gps_deadzone) gps_roll_corr = sway_err_m * PARAMS.gps_P;\n\n      gps_pitch_corr = clamp(slewLimit(prevGPSPitchCorr, clamp(gps_pitch_corr, -PARAMS.gps_max_tilt, PARAMS.gps_max_tilt), PARAMS.gps_slew_rate), -PARAMS.gps_max_tilt, PARAMS.gps_max_tilt);\n      gps_roll_corr = clamp(slewLimit(prevGPSRollCorr, clamp(gps_roll_corr, -PARAMS.gps_max_tilt, PARAMS.gps_max_tilt), PARAMS.gps_slew_rate), -PARAMS.gps_max_tilt, PARAMS.gps_max_tilt);\n\n      if (roll_stick !== 0) gps_roll_corr = 0;\n      if (pitch_stick !== 0) gps_pitch_corr = 0;\n\n      context.set(keyPrevGPSPitch, gps_pitch_corr);\n      context.set(keyPrevGPSRoll, gps_roll_corr);\n    }\n  } else {\n    context.set(keyPrevGPSPitch, 0);\n    context.set(keyPrevGPSRoll, 0);\n  }\n\n  // Integrals\n  if (heave_stick === 0 && !depthStale) {\n    depthIntegral += depth_err * PARAMS.depth_I;\n    depthIntegral = clamp(depthIntegral, -PARAMS.depth_I_max, PARAMS.depth_I_max);\n    context.set(keyDepthI, depthIntegral);\n  } else if (depthStale) { depthIntegral = 0; context.set(keyDepthI, 0); }\n\n  if (yaw_stick === 0 && !gyroStale) {\n    headingIntegral += heading_err * PARAMS.heading_I;\n    headingIntegral = clamp(headingIntegral, -PARAMS.heading_I_max, PARAMS.heading_I_max);\n    context.set(keyHeadingI, headingIntegral);\n  } else if (gyroStale) { headingIntegral = 0; context.set(keyHeadingI, 0); }\n\n  // PID\n  let rollCorr = slewLimit(prevRollCorr, nonlinearCorrection(roll_err, PARAMS.roll_P) + (gyroStale ? 0 : -filteredRollRate * PARAMS.roll_D), PARAMS.roll_slew);\n  let pitchCorr = slewLimit(prevPitchCorr, nonlinearCorrection(pitch_err, PARAMS.pitch_P) + (gyroStale ? 0 : -filteredPitchRate * PARAMS.pitch_D), PARAMS.pitch_slew);\n  let yawCorr = slewLimit(prevYawCorr, nonlinearCorrection(heading_err, PARAMS.heading_P) + headingIntegral + (gyroStale ? 0 : -filteredYawRate * PARAMS.yaw_D), PARAMS.yaw_slew);\n  let heaveCorr = slewLimit(prevHeaveCorr, (depthStale ? 0 : nonlinearCorrection(depth_err, PARAMS.depth_P)) + depthIntegral, PARAMS.heave_slew);\n\n  context.set(keyPrevRoll, rollCorr); context.set(keyPrevPitch, pitchCorr);\n  context.set(keyPrevYaw, yawCorr); context.set(keyPrevHeave, heaveCorr);\n\n  roll_thrust = clamp(rollCorr + gps_roll_corr);\n  pitch_thrust = clamp(pitchCorr + gps_pitch_corr);\n  yaw_thrust = clamp(yawCorr);\n  heave_thrust = clamp(heaveCorr);\n}\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT\n// ═══════════════════════════════════════════════════════════\n\nmsg.control = {\n  roll_thrust,\n  pitch_thrust,\n  yaw_thrust,\n  heave_thrust\n};\n\nreturn msg;\n",
+        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV FLIGHT MODE CONTROLLER - MANUAL / STABLE / MAG (GPS POSITION HOLD)\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// FLIGHT MODES:\n// -------------\n// MANUAL: Direct stick control, no stabilization\n// - Raw body-frame stick passthrough, no corrections\n// - Full pilot authority on all axes\n//\n// STABLE: Attitude/heading/depth hold with world-frame stick input\n// - Holds roll, pitch, yaw (heading), and depth at target setpoints\n// - Stick inputs transformed from world-frame to body-frame so that\n//   \"forward\" is always forward relative to the water surface regardless\n//   of current roll/pitch angle\n// - Pilot trims targets by moving sticks (setpoints follow stick input)\n// - PID control: P + I + D with gyro rate damping\n//\n// MAG: GPS position hold + attitude/depth hold\n// - Same world-frame stick transform as STABLE\n// - Additionally holds GPS lat/lon position\n// - Forces level flight (roll=0, pitch=0) for stable GPS tracking\n// - GPS errors converted to body-frame tilt commands\n// - Future: waypoint following / autonomous nav\n//\n// WORLD-TO-BODY STICK TRANSFORM (STABLE + MAG):\n// -----------------------------------------------\n// Pilot stick intent is in world-frame (relative to water surface).\n// The transform rotates surge/sway/heave through current roll and pitch\n// so the ROV moves as the pilot expects regardless of its attitude.\n//\n// body_surge = heave_w·sin(p) + surge_w·cos(p)\n// body_sway  = heave_w·sin(r)·cos(p) + sway_w·cos(r)\n// body_heave = heave_w·cos(p)·cos(r) - sway_w·sin(r) - surge_w·sin(p)\n//\n// Rotational axes (roll/pitch/yaw corrections from PID) are already in\n// body-frame and are NOT transformed.\n//\n// CONTROL THEORY:\n// ---------------\n// PID: Output = P×error + I×∫error·dt + D×dError/dt\n// P: immediate response, can oscillate without damping\n// I: eliminates steady-state error (buoyancy, current, drift)\n// D: damping via gyro rates, prevents overshoot\n//\n// TUNING GUIDE:\n// -------------\n// 1. DEPTH HOLD: P=0.3, I=0.05 (increase P until hold, I for offset)\n// 2. HEADING HOLD: P=0.2, I=0.02, D=0.06\n// 3. ROLL STAB: P=0.5, D=0.2 (no I-term)\n// 4. PITCH STAB: P=0.5, D=0.2 (no I-term)\n// 5. GPS HOLD: P=0.15, deadzone=1.0m, max_tilt=0.3\n//\n// SYMPTOMS AND FIXES:\n// -------------------\n// • Oscillation → reduce P or increase D\n// • Slow response → increase P\n// • Steady offset → increase I\n// • Jerky corrections → increase slew limits or filter alpha\n// • GPS hunting → increase gps_deadzone or reduce gps_P\n// • Depth yo-yos → check buoyancy first, then reduce depth_P\n//\n// ═══════════════════════════════════════════════════════════\n// TUNABLE PARAMETERS (HA + DEFAULTS)\n// ═══════════════════════════════════════════════════════════\n\n\nconst cfg = flow.get(\"rov_tuning\") || {};\n\nfunction val(name, def) {\n    const v = Number(cfg[name]);\n    return Number.isFinite(v) ? v : def;\n}\n\nconst PARAMS = {\n    deadband: 5,\n\n    heading_trim_rate: 0.5,\n    roll_trim_rate: 0.3,\n    pitch_trim_rate: 0.3,\n    depth_trim_rate: 0.05,\n\n    // Gains from HA tuning panel\n    heading_P: cfg.rov_heading_p ?? 0.2,\n    roll_P: cfg.rov_roll_p ?? 0.3,\n    pitch_P: cfg.rov_pitch_p ?? 0.3,\n    depth_P: cfg.rov_depth_p ?? 0.3,\n\n    depth_I: cfg.rov_depth_i ?? 0.05,\n    heading_I: cfg.rov_heading_i ?? 0.02,\n\n    roll_D: cfg.rov_roll_d ?? 0.2,\n    pitch_D: cfg.rov_pitch_d ?? 0.2,\n    yaw_D: cfg.rov_yaw_d ?? 0.06,\n\n    depth_I_max: 0.3,\n    heading_I_max: 0.2,\n\n    correction_exponent: 1.3,\n\n    gps_P: 0.15,\n    gps_max_tilt: 0.3,\n    gps_deadzone: 1.0,\n    gps_jump_threshold: 10,\n    gps_slew_rate: 0.05,\n\n    meters_per_deg_lat: 111000,\n    meters_per_deg_lon: 88000,\n\n    roll_slew: 0.1,\n    pitch_slew: 0.1,\n    yaw_slew: 0.1,\n    heave_slew: 0.1,\n\n    gyro_filter_alpha: 0.3,\n    max_sensor_age: 2000\n};\n\n// ═══════════════════════════════════════════════════════════\n// UTILITY FUNCTIONS\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v, min = -1, max = 1) {\n    return Math.max(min, Math.min(max, v));\n}\n\nfunction applyDeadband(value, deadband) {\n    return Math.abs(value) < deadband ? 0 : value;\n}\n\nfunction nonlinearCorrection(error, baseGain, exponent = PARAMS.correction_exponent) {\n    const sign = Math.sign(error);\n    const magnitude = Math.abs(error);\n    return sign * baseGain * Math.pow(magnitude, exponent);\n}\n\nfunction slewLimit(current, target, maxDelta) {\n    const delta = target - current;\n    if (Math.abs(delta) <= maxDelta) return target;\n    return current + Math.sign(delta) * maxDelta;\n}\n\n// Rotate world-frame stick inputs into body-frame using current roll/pitch.\n// Inputs are in percent [-100, 100], output is also in percent [-100, 100].\n// roll_deg and pitch_deg come from the IMU (ch.roll, ch.pitch).\n\nfunction worldToBody(surge_w, sway_w, heave_w, roll_deg, pitch_deg) {\n    const r = roll_deg * Math.PI / 180;\n    const p = pitch_deg * Math.PI / 180;\n\n    return {\n        surge: heave_w * Math.sin(p) + surge_w * Math.cos(p),\n        sway: heave_w * Math.sin(r) * Math.cos(p) + sway_w * Math.cos(r),\n        heave: heave_w * Math.cos(p) * Math.cos(r) - sway_w * Math.sin(r) - surge_w * Math.sin(p)\n    };\n}\n\n// ═══════════════════════════════════════════════════════════\n// EXTRACT INPUT DATA\n// ═══════════════════════════════════════════════════════════\n\nconst ch = msg.payload || {};\nconst vessel_id = msg.router?.vessel_id || \"rov-unknown\";\n\n// ═══════════════════════════════════════════════════════════\n// PERSISTENT STATE - CONTEXT KEYS\n// ═══════════════════════════════════════════════════════════\n\nconst keyLast = `rov:lastMode:${vessel_id}`;\nconst keyHead = `rov:targetHeading:${vessel_id}`;\nconst keyRoll = `rov:targetRoll:${vessel_id}`;\nconst keyPitch = `rov:targetPitch:${vessel_id}`;\nconst keyLat = `rov:targetLat:${vessel_id}`;\nconst keyLon = `rov:targetLon:${vessel_id}`;\nconst keyDepth = `rov:targetDepth:${vessel_id}`;\n\nconst keyDepthI = `rov:depthIntegral:${vessel_id}`;\nconst keyHeadingI = `rov:headingIntegral:${vessel_id}`;\n\nconst keyPrevRoll = `rov:prevRollCorr:${vessel_id}`;\nconst keyPrevPitch = `rov:prevPitchCorr:${vessel_id}`;\nconst keyPrevYaw = `rov:prevYawCorr:${vessel_id}`;\nconst keyPrevHeave = `rov:prevHeaveCorr:${vessel_id}`;\n\nconst keyPrevGPSRoll = `rov:prevGPSRollCorr:${vessel_id}`;\nconst keyPrevGPSPitch = `rov:prevGPSPitchCorr:${vessel_id}`;\n\nconst keyPrevNorth = `rov:prevNorthErr:${vessel_id}`;\nconst keyPrevEast = `rov:prevEastErr:${vessel_id}`;\n\nconst keyFilteredRollRate = `rov:filteredRollRate:${vessel_id}`;\nconst keyFilteredPitchRate = `rov:filteredPitchRate:${vessel_id}`;\nconst keyFilteredYawRate = `rov:filteredYawRate:${vessel_id}`;\n\nconst keyLastGyroTime = `rov:lastGyroTime:${vessel_id}`;\nconst keyLastDepthTime = `rov:lastDepthTime:${vessel_id}`;\nconst keyLastGPSTime = `rov:lastGPSTime:${vessel_id}`;\n\n// ═══════════════════════════════════════════════════════════\n// RESTORE PERSISTENT STATE\n// ═══════════════════════════════════════════════════════════\n\nlet lastMode = context.get(keyLast);\n\nlet targetHeading = context.get(keyHead);\nlet targetRoll = context.get(keyRoll);\nlet targetPitch = context.get(keyPitch);\n\nlet targetLat = context.get(keyLat);\nlet targetLon = context.get(keyLon);\nlet targetDepth = context.get(keyDepth);\n\nlet depthIntegral = context.get(keyDepthI) || 0;\nlet headingIntegral = context.get(keyHeadingI) || 0;\n\nlet prevRollCorr = context.get(keyPrevRoll) || 0;\nlet prevPitchCorr = context.get(keyPrevPitch) || 0;\nlet prevYawCorr = context.get(keyPrevYaw) || 0;\nlet prevHeaveCorr = context.get(keyPrevHeave) || 0;\n\nlet prevGPSRollCorr = context.get(keyPrevGPSRoll) || 0;\nlet prevGPSPitchCorr = context.get(keyPrevGPSPitch) || 0;\n\nlet filteredRollRate = context.get(keyFilteredRollRate) || 0;\nlet filteredPitchRate = context.get(keyFilteredPitchRate) || 0;\nlet filteredYawRate = context.get(keyFilteredYawRate) || 0;\n\n// ═══════════════════════════════════════════════════════════\n// SENSOR STALENESS CHECK\n// ═══════════════════════════════════════════════════════════\n\nconst nowMs = Date.now();\n\nlet lastGyroTime = context.get(keyLastGyroTime);\nlet lastDepthTime = context.get(keyLastDepthTime);\nlet lastGPSTime = context.get(keyLastGPSTime);\n\nif (\n    typeof ch.roll_rate === \"number\" &&\n    typeof ch.pitch_rate === \"number\" &&\n    typeof ch.yaw_rate === \"number\"\n) {\n    lastGyroTime = nowMs;\n    context.set(keyLastGyroTime, nowMs);\n}\n\nif (typeof ch.depth === \"number\") {\n    lastDepthTime = nowMs;\n    context.set(keyLastDepthTime, nowMs);\n}\n\nif (typeof ch.lat === \"number\" && typeof ch.lon === \"number\") {\n    lastGPSTime = nowMs;\n    context.set(keyLastGPSTime, nowMs);\n}\n\nconst gyroStale =\n    typeof lastGyroTime !== \"number\" ||\n    nowMs - lastGyroTime > PARAMS.max_sensor_age;\n\nconst depthStale =\n    typeof lastDepthTime !== \"number\" ||\n    nowMs - lastDepthTime > PARAMS.max_sensor_age;\n\nconst gpsStale =\n    typeof lastGPSTime !== \"number\" ||\n    nowMs - lastGPSTime > PARAMS.max_sensor_age;\n\n// ═══════════════════════════════════════════════════════════\n// MODE DETECTION AND TRANSITIONS\n// ═══════════════════════════════════════════════════════════\n\nconst mode = ch.flight_mode || \"MANUAL\";\n\nfunction resetAllTargets() {\n    targetHeading = null;\n    targetRoll = null;\n    targetPitch = null;\n    targetLat = null;\n    targetLon = null;\n    targetDepth = null;\n\n    depthIntegral = 0;\n    headingIntegral = 0;\n\n    prevRollCorr = 0;\n    prevPitchCorr = 0;\n    prevYawCorr = 0;\n    prevHeaveCorr = 0;\n    prevGPSRollCorr = 0;\n    prevGPSPitchCorr = 0;\n\n    context.set(keyHead, null);\n    context.set(keyRoll, null);\n    context.set(keyPitch, null);\n    context.set(keyLat, null);\n    context.set(keyLon, null);\n    context.set(keyDepth, null);\n\n    context.set(keyDepthI, 0);\n    context.set(keyHeadingI, 0);\n\n    context.set(keyPrevRoll, 0);\n    context.set(keyPrevPitch, 0);\n    context.set(keyPrevYaw, 0);\n    context.set(keyPrevHeave, 0);\n    context.set(keyPrevGPSRoll, 0);\n    context.set(keyPrevGPSPitch, 0);\n\n    context.set(keyPrevNorth, null);\n    context.set(keyPrevEast, null);\n}\n\nif (mode === \"STABLE\" && lastMode !== \"STABLE\") {\n    targetHeading = typeof ch.heading === \"number\" ? ch.heading : targetHeading;\n    targetRoll = typeof ch.roll === \"number\" ? ch.roll : targetRoll;\n    targetPitch = typeof ch.pitch === \"number\" ? ch.pitch : targetPitch;\n    targetDepth = typeof ch.depth === \"number\" ? ch.depth : 1.0;\n\n    depthIntegral = 0;\n    headingIntegral = 0;\n\n    prevRollCorr = 0;\n    prevPitchCorr = 0;\n    prevYawCorr = 0;\n    prevHeaveCorr = 0;\n\n    context.set(keyHead, targetHeading);\n    context.set(keyRoll, targetRoll);\n    context.set(keyPitch, targetPitch);\n    context.set(keyDepth, targetDepth);\n\n    context.set(keyDepthI, 0);\n    context.set(keyHeadingI, 0);\n\n    context.set(keyPrevRoll, 0);\n    context.set(keyPrevPitch, 0);\n    context.set(keyPrevYaw, 0);\n    context.set(keyPrevHeave, 0);\n}\n\nif (mode === \"MAG\" && lastMode !== \"MAG\") {\n    targetLat = typeof ch.lat === \"number\" ? ch.lat : targetLat;\n    targetLon = typeof ch.lon === \"number\" ? ch.lon : targetLon;\n    targetHeading = typeof ch.heading === \"number\" ? ch.heading : targetHeading;\n\n    targetRoll = 0;\n    targetPitch = 0;\n    targetDepth = typeof ch.depth === \"number\" ? ch.depth : 1.0;\n\n    depthIntegral = 0;\n    headingIntegral = 0;\n\n    prevRollCorr = 0;\n    prevPitchCorr = 0;\n    prevYawCorr = 0;\n    prevHeaveCorr = 0;\n    prevGPSRollCorr = 0;\n    prevGPSPitchCorr = 0;\n\n    context.set(keyLat, targetLat);\n    context.set(keyLon, targetLon);\n    context.set(keyHead, targetHeading);\n    context.set(keyRoll, targetRoll);\n    context.set(keyPitch, targetPitch);\n    context.set(keyDepth, targetDepth);\n\n    context.set(keyDepthI, 0);\n    context.set(keyHeadingI, 0);\n\n    context.set(keyPrevRoll, 0);\n    context.set(keyPrevPitch, 0);\n    context.set(keyPrevYaw, 0);\n    context.set(keyPrevHeave, 0);\n    context.set(keyPrevGPSRoll, 0);\n    context.set(keyPrevGPSPitch, 0);\n\n    context.set(keyPrevNorth, null);\n    context.set(keyPrevEast, null);\n}\n\nif (mode === \"MANUAL\") {\n    resetAllTargets();\n}\n\ncontext.set(keyLast, mode);\n\n// ═══════════════════════════════════════════════════════════\n// FILTER GYRO RATES (for D-term)\n// ═══════════════════════════════════════════════════════════\n\nif (!gyroStale) {\n    const alpha = PARAMS.gyro_filter_alpha;\n\n    filteredRollRate =\n        alpha * (ch.roll_rate || 0) + (1 - alpha) * filteredRollRate;\n    filteredPitchRate =\n        alpha * (ch.pitch_rate || 0) + (1 - alpha) * filteredPitchRate;\n    filteredYawRate =\n        alpha * (ch.yaw_rate || 0) + (1 - alpha) * filteredYawRate;\n\n    context.set(keyFilteredRollRate, filteredRollRate);\n    context.set(keyFilteredPitchRate, filteredPitchRate);\n    context.set(keyFilteredYawRate, filteredYawRate);\n}\n\n// ═══════════════════════════════════════════════════════════\n// FLIGHT CONTROL LOGIC\n// ═══════════════════════════════════════════════════════════\n\nlet roll_thrust = 0;\nlet pitch_thrust = 0;\nlet yaw_thrust = 0;\nlet heave_thrust = 0;\n\n// ───────────────────────────────────────────────────────────\n// MANUAL MODE - raw body-frame passthrough, no transform\n// ───────────────────────────────────────────────────────────\n\nif (mode === \"MANUAL\") {\n    roll_thrust = (ch.ch6 || 0) / 100;\n    pitch_thrust = (ch.ch7 || 0) / 100;\n    yaw_thrust = -(ch.ch4 || 0) / 100;\n    heave_thrust = (ch.ch3 || 0) / 100;\n}\n\n// ───────────────────────────────────────────────────────────\n// STABLE MODE\n// ───────────────────────────────────────────────────────────\n\nelse if (mode === \"STABLE\") {\n    // Rotational sticks - body-frame, used for target trimming only\n    const roll_stick = applyDeadband(ch.ch6 || 0, PARAMS.deadband);\n    const pitch_stick = applyDeadband(ch.ch7 || 0, PARAMS.deadband);\n    const yaw_stick = applyDeadband(ch.ch4 || 0, PARAMS.deadband);\n\n    // Translational sticks - world-frame intent, rotate to body-frame\n    const surge_w = applyDeadband(ch.ch2 || 0, PARAMS.deadband);\n    const sway_w = applyDeadband(ch.ch1 || 0, PARAMS.deadband);\n    const heave_w = applyDeadband(ch.ch3 || 0, PARAMS.deadband);\n\n    const body = worldToBody(\n        surge_w,\n        sway_w,\n        heave_w,\n        ch.roll || 0,\n        ch.pitch || 0\n    );\n\n    const heave_stick = body.heave;\n\n    // Overwrite ch so downstream thruster mixer sees body-frame values\n    ch.ch1 = body.sway;\n    ch.ch2 = body.surge;\n    ch.ch3 = body.heave;\n\n    // Target trimming\n    if (roll_stick !== 0 && typeof targetRoll === \"number\") {\n        targetRoll += (roll_stick / 100) * PARAMS.roll_trim_rate;\n        targetRoll = clamp(targetRoll, -45, 45);\n        context.set(keyRoll, targetRoll);\n    }\n\n    if (pitch_stick !== 0 && typeof targetPitch === \"number\") {\n        targetPitch += (pitch_stick / 100) * PARAMS.pitch_trim_rate;\n        targetPitch = clamp(targetPitch, -45, 45);\n        context.set(keyPitch, targetPitch);\n    }\n\n    if (yaw_stick !== 0 && typeof targetHeading === \"number\") {\n        targetHeading += (yaw_stick / 100) * PARAMS.heading_trim_rate;\n        targetHeading = ((targetHeading % 360) + 360) % 360;\n        context.set(keyHead, targetHeading);\n\n        headingIntegral = 0;\n        context.set(keyHeadingI, 0);\n    }\n\n    if (heave_stick !== 0 && typeof targetDepth === \"number\") {\n        targetDepth += (heave_stick / 100) * PARAMS.depth_trim_rate;\n        targetDepth = clamp(targetDepth, 0.5, 100);\n        context.set(keyDepth, targetDepth);\n\n        depthIntegral = 0;\n        context.set(keyDepthI, 0);\n    }\n\n    // Errors\n    const roll_err = (targetRoll || 0) - (ch.roll || 0);\n    const pitch_err = (targetPitch || 0) - (ch.pitch || 0);\n\n    let heading_err = 0;\n    if (typeof targetHeading === \"number\" && typeof ch.heading === \"number\") {\n        heading_err = targetHeading - ch.heading;\n        heading_err = (((heading_err + 180) % 360) + 360) % 360 - 180;\n    }\n\n    let depth_err = 0;\n    if (typeof targetDepth === \"number\" && typeof ch.depth === \"number\") {\n        depth_err = targetDepth - ch.depth;\n    }\n\n    // Integrals\n    if (heave_stick === 0 && !depthStale) {\n        depthIntegral += depth_err * PARAMS.depth_I;\n        depthIntegral = clamp(\n            depthIntegral,\n            -PARAMS.depth_I_max,\n            PARAMS.depth_I_max\n        );\n        context.set(keyDepthI, depthIntegral);\n    } else if (depthStale) {\n        depthIntegral = 0;\n        context.set(keyDepthI, 0);\n    }\n\n    if (yaw_stick === 0 && !gyroStale) {\n        headingIntegral += heading_err * PARAMS.heading_I;\n        headingIntegral = clamp(\n            headingIntegral,\n            -PARAMS.heading_I_max,\n            PARAMS.heading_I_max\n        );\n        context.set(keyHeadingI, headingIntegral);\n    } else if (gyroStale) {\n        headingIntegral = 0;\n        context.set(keyHeadingI, 0);\n    }\n\n    // PID\n    let rollCorr = slewLimit(\n        prevRollCorr,\n        nonlinearCorrection(roll_err, PARAMS.roll_P) +\n        (gyroStale ? 0 : -filteredRollRate * PARAMS.roll_D),\n        PARAMS.roll_slew\n    );\n\n    let pitchCorr = slewLimit(\n        prevPitchCorr,\n        nonlinearCorrection(pitch_err, PARAMS.pitch_P) +\n        (gyroStale ? 0 : -filteredPitchRate * PARAMS.pitch_D),\n        PARAMS.pitch_slew\n    );\n\n    let yawCorr = slewLimit(\n        prevYawCorr,\n        nonlinearCorrection(heading_err, PARAMS.heading_P) +\n        headingIntegral +\n        (gyroStale ? 0 : -filteredYawRate * PARAMS.yaw_D),\n        PARAMS.yaw_slew\n    );\n\n    let heaveCorr = slewLimit(\n        prevHeaveCorr,\n        (depthStale ? 0 : nonlinearCorrection(depth_err, PARAMS.depth_P)) +\n        depthIntegral,\n        PARAMS.heave_slew\n    );\n\n    context.set(keyPrevRoll, rollCorr);\n    context.set(keyPrevPitch, pitchCorr);\n    context.set(keyPrevYaw, yawCorr);\n    context.set(keyPrevHeave, heaveCorr);\n\n    roll_thrust = clamp(rollCorr);\n    pitch_thrust = clamp(pitchCorr);\n    yaw_thrust = clamp(yawCorr);\n    heave_thrust = clamp(heaveCorr);\n}\n\n// ───────────────────────────────────────────────────────────\n// MAG MODE\n// ───────────────────────────────────────────────────────────\n\nelse if (mode === \"MAG\") {\n    // Rotational sticks - body-frame\n    const roll_stick = applyDeadband(ch.ch6 || 0, PARAMS.deadband);\n    const pitch_stick = applyDeadband(ch.ch7 || 0, PARAMS.deadband);\n    const yaw_stick = applyDeadband(ch.ch4 || 0, PARAMS.deadband);\n\n    // Translational sticks - world-frame → body-frame\n    const surge_w = applyDeadband(ch.ch2 || 0, PARAMS.deadband);\n    const sway_w = applyDeadband(ch.ch1 || 0, PARAMS.deadband);\n    const heave_w = applyDeadband(ch.ch3 || 0, PARAMS.deadband);\n\n    const body = worldToBody(\n        surge_w,\n        sway_w,\n        heave_w,\n        ch.roll || 0,\n        ch.pitch || 0\n    );\n\n    const heave_stick = body.heave;\n\n    ch.ch1 = body.sway;\n    ch.ch2 = body.surge;\n    ch.ch3 = body.heave;\n\n    // Target trimming (heading + depth only in MAG)\n    if (yaw_stick !== 0 && typeof targetHeading === \"number\") {\n        targetHeading += (yaw_stick / 100) * PARAMS.heading_trim_rate;\n        targetHeading = ((targetHeading % 360) + 360) % 360;\n        context.set(keyHead, targetHeading);\n\n        headingIntegral = 0;\n        context.set(keyHeadingI, 0);\n    }\n\n    if (heave_stick !== 0 && typeof targetDepth === \"number\") {\n        targetDepth += (heave_stick / 100) * PARAMS.depth_trim_rate;\n        targetDepth = clamp(targetDepth, 0.5, 100);\n        context.set(keyDepth, targetDepth);\n\n        depthIntegral = 0;\n        context.set(keyDepthI, 0);\n    }\n\n    // Errors\n    const roll_err = (targetRoll || 0) - (ch.roll || 0);\n    const pitch_err = (targetPitch || 0) - (ch.pitch || 0);\n\n    let heading_err = 0;\n    if (typeof targetHeading === \"number\" && typeof ch.heading === \"number\") {\n        heading_err = targetHeading - ch.heading;\n        heading_err = (((heading_err + 180) % 360) + 360) % 360 - 180;\n    }\n\n    let depth_err = 0;\n    if (typeof targetDepth === \"number\" && typeof ch.depth === \"number\") {\n        depth_err = targetDepth - ch.depth;\n    }\n\n    // GPS position hold\n    let gps_roll_corr = 0;\n    let gps_pitch_corr = 0;\n\n    if (\n        !gpsStale &&\n        typeof targetLat === \"number\" &&\n        typeof ch.lat === \"number\" &&\n        typeof targetLon === \"number\" &&\n        typeof ch.lon === \"number\" &&\n        typeof ch.heading === \"number\"\n    ) {\n        const north_err_m = (targetLat - ch.lat) * PARAMS.meters_per_deg_lat;\n        const east_err_m = (targetLon - ch.lon) * PARAMS.meters_per_deg_lon;\n\n        const prevNorthErr = context.get(keyPrevNorth);\n        const prevEastErr = context.get(keyPrevEast);\n\n        const havePrev =\n            typeof prevNorthErr === \"number\" &&\n            typeof prevEastErr === \"number\";\n\n        if (!havePrev) {\n            context.set(keyPrevNorth, north_err_m);\n            context.set(keyPrevEast, east_err_m);\n        } else if (\n            Math.abs(north_err_m - prevNorthErr) > PARAMS.gps_jump_threshold ||\n            Math.abs(east_err_m - prevEastErr) > PARAMS.gps_jump_threshold\n        ) {\n            // GPS glitch - skip this cycle\n        } else {\n            context.set(keyPrevNorth, north_err_m);\n            context.set(keyPrevEast, east_err_m);\n\n            const headingRad = (ch.heading * Math.PI) / 180;\n\n            const surge_err_m =\n                north_err_m * Math.cos(headingRad) +\n                east_err_m * Math.sin(headingRad);\n\n            const sway_err_m =\n                -north_err_m * Math.sin(headingRad) +\n                east_err_m * Math.cos(headingRad);\n\n            if (Math.abs(surge_err_m) > PARAMS.gps_deadzone) {\n                gps_pitch_corr = surge_err_m * PARAMS.gps_P;\n            }\n\n            if (Math.abs(sway_err_m) > PARAMS.gps_deadzone) {\n                gps_roll_corr = sway_err_m * PARAMS.gps_P;\n            }\n\n            gps_pitch_corr = clamp(\n                slewLimit(\n                    prevGPSPitchCorr,\n                    clamp(\n                        gps_pitch_corr,\n                        -PARAMS.gps_max_tilt,\n                        PARAMS.gps_max_tilt\n                    ),\n                    PARAMS.gps_slew_rate\n                ),\n                -PARAMS.gps_max_tilt,\n                PARAMS.gps_max_tilt\n            );\n\n            gps_roll_corr = clamp(\n                slewLimit(\n                    prevGPSRollCorr,\n                    clamp(\n                        gps_roll_corr,\n                        -PARAMS.gps_max_tilt,\n                        PARAMS.gps_max_tilt\n                    ),\n                    PARAMS.gps_slew_rate\n                ),\n                -PARAMS.gps_max_tilt,\n                PARAMS.gps_max_tilt\n            );\n\n            if (roll_stick !== 0) gps_roll_corr = 0;\n            if (pitch_stick !== 0) gps_pitch_corr = 0;\n\n            context.set(keyPrevGPSPitch, gps_pitch_corr);\n            context.set(keyPrevGPSRoll, gps_roll_corr);\n        }\n    } else {\n        context.set(keyPrevGPSPitch, 0);\n        context.set(keyPrevGPSRoll, 0);\n    }\n\n    // Integrals\n    if (heave_stick === 0 && !depthStale) {\n        depthIntegral += depth_err * PARAMS.depth_I;\n        depthIntegral = clamp(\n            depthIntegral,\n            -PARAMS.depth_I_max,\n            PARAMS.depth_I_max\n        );\n        context.set(keyDepthI, depthIntegral);\n    } else if (depthStale) {\n        depthIntegral = 0;\n        context.set(keyDepthI, 0);\n    }\n\n    if (yaw_stick === 0 && !gyroStale) {\n        headingIntegral += heading_err * PARAMS.heading_I;\n        headingIntegral = clamp(\n            headingIntegral,\n            -PARAMS.heading_I_max,\n            PARAMS.heading_I_max\n        );\n        context.set(keyHeadingI, headingIntegral);\n    } else if (gyroStale) {\n        headingIntegral = 0;\n        context.set(keyHeadingI, 0);\n    }\n\n    // PID\n    let rollCorr = slewLimit(\n        prevRollCorr,\n        nonlinearCorrection(roll_err, PARAMS.roll_P) +\n        (gyroStale ? 0 : -filteredRollRate * PARAMS.roll_D),\n        PARAMS.roll_slew\n    );\n\n    let pitchCorr = slewLimit(\n        prevPitchCorr,\n        nonlinearCorrection(pitch_err, PARAMS.pitch_P) +\n        (gyroStale ? 0 : -filteredPitchRate * PARAMS.pitch_D),\n        PARAMS.pitch_slew\n    );\n\n    let yawCorr = slewLimit(\n        prevYawCorr,\n        nonlinearCorrection(heading_err, PARAMS.heading_P) +\n        headingIntegral +\n        (gyroStale ? 0 : -filteredYawRate * PARAMS.yaw_D),\n        PARAMS.yaw_slew\n    );\n\n    let heaveCorr = slewLimit(\n        prevHeaveCorr,\n        (depthStale ? 0 : nonlinearCorrection(depth_err, PARAMS.depth_P)) +\n        depthIntegral,\n        PARAMS.heave_slew\n    );\n\n    context.set(keyPrevRoll, rollCorr);\n    context.set(keyPrevPitch, pitchCorr);\n    context.set(keyPrevYaw, yawCorr);\n    context.set(keyPrevHeave, heaveCorr);\n\n    roll_thrust = clamp(rollCorr + gps_roll_corr);\n    pitch_thrust = clamp(pitchCorr + gps_pitch_corr);\n    yaw_thrust = clamp(yawCorr);\n    heave_thrust = clamp(heaveCorr);\n}\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT\n// ═══════════════════════════════════════════════════════════\n\nmsg.control = {\n    roll_thrust,\n    pitch_thrust,\n    yaw_thrust,\n    heave_thrust\n};\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1210,
-        "y": 1600,
+        "x": 1170,
+        "y": 2300,
         "wires": [
             [
                 "91cb0e16"
@@ -795,15 +802,15 @@
         "z": "ddadc02b",
         "g": "205ea8dd1b87c603",
         "name": "ROV Thruster Mixer → UDP+MQTT",
-        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV 8-THRUSTER MIXER WITH PER-THRUSTER DEADBAND & REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// PURPOSE:\n// --------\n// Converts 6-axis control commands (surge/sway/heave/roll/pitch/yaw) into\n// individual thruster power outputs for an 8-thruster ROV configuration.\n// Applies per-thruster forward/reverse deadband compensation and reverse bias.\n//\n// INPUTS:\n// -------\n// From control loop (normalized [-1, 1]):\n//   - control.roll_thrust   → roll correction\n//   - control.pitch_thrust  → pitch correction\n//   - control.yaw_thrust    → yaw correction\n//   - control.heave_thrust  → heave/depth correction (or direct stick in MANUAL)\n//\n// From stick channels (percent [-100, 100]):\n//   - ch1 → sway (left/right)\n//   - ch2 → surge (forward/back)\n//   - ch3 → heave (up/down) if not using control loop\n//   - ch4 → yaw (used by control loop)\n//   - ch5 → ARM switch: >0 = armed, <=0 = disarmed (zero packet sent)\n//   - ch6 → roll (used by control loop)\n//   - ch7 → pitch (used by control loop)\n//\n// OUTPUTS:\n// --------\n// output[1]: MQTT → kept for simulator / debug during UDP transition\n//   - topic: fleet/{fleet_id}/vessels/{vessel_id}/thrusters/set\n//   - payload: { thr: [t1..t8] } clamped to [-100, 100]\n//\n// output[0]: UDP binary packet → udp out node\n//   - 18-byte packet: craft_type(1) + craft_id(1) + T1..T8 int16LE x10 (16)\n//   - All thrusters zeroed if disarmed (CH5 <= 0)\n//   - Zeros still sent when disarmed to keep ESP deadman timer alive\n//   - msg.ip and msg.port set dynamically from flow context\n//   - Dropped silently if udp_ip::{vessel_id} not yet resolved\n//\n// THRUSTER LAYOUT:\n// ----------------\n//\n// TOP VIEW (Horizontal thrusters 1-4: surge/sway/yaw)\n// ----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [1] Port Bow    [2] Stbd Bow\n//          ╱              ╲\n//         ╱                ╲\n//        ╱                  ╲\n//       ╱                    ╲\n//  [4] Port Stern      [3] Stbd Stern\n//\n// SIDE VIEW (Vertical thrusters 5-8: heave/roll/pitch)\n// -----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [5] Port Bow (vert)    [6] Stbd Bow (vert)\n//          ↕                      ↕\n//\n//     [8] Port Stern (vert)   [7] Stbd Stern (vert)\n//          ↕                      ↕\n//\n// SIGN CONVENTIONS:\n// -----------------\n// Body frame (right-hand rule):\n//   +Surge  = forward (bow direction)\n//   +Sway   = starboard (right)\n//   +Heave  = upward (toward surface)\n//   +Roll   = roll right (starboard down, port up)\n//   +Pitch  = nose down (bow down, stern up)\n//   +Yaw    = turn right (clockwise from above)\n//\n// ═══════════════════════════════════════════════════════════════════════════\n\nif (flow.get(\"safety_kill_active\") === true) return null;\n\nconst ch = msg.payload || {};\nconst c = msg.control || {};\nconst fleet_id = msg.router?.fleet_id || \"\";\nconst vessel_id = msg.router?.vessel_id || flow.get(\"active_vessel_id\");\nif (!vessel_id) return null;\n\n\n// ═══════════════════════════════════════════════════════════\n// ARM CHECK — CH5 > 0 = armed, <= 0 = disarmed\n// When disarmed: zero packet is still sent to keep ESP deadman alive\n// ═══════════════════════════════════════════════════════════\n\nconst armed = (ch.ch5 || 0) > 0;\n\n// ═══════════════════════════════════════════════════════════\n// TUNING PARAMETERS\n// ═══════════════════════════════════════════════════════════\n\nconst ZERO_CUTOFF = 0.5;\n\nconst REVERSE_BIAS = {\n  t1: 0.90, t2: 0.90, t3: 0.90, t4: 0.90,\n  t5: 0.90, t6: 0.90, t7: 0.90, t8: 0.90\n};\n\nconst REVERSE_GAIN = {\n  t1: 1 + REVERSE_BIAS.t1, t2: 1 + REVERSE_BIAS.t2,\n  t3: 1 + REVERSE_BIAS.t3, t4: 1 + REVERSE_BIAS.t4,\n  t5: 1 + REVERSE_BIAS.t5, t6: 1 + REVERSE_BIAS.t6,\n  t7: 1 + REVERSE_BIAS.t7, t8: 1 + REVERSE_BIAS.t8\n};\n\nconst DEADBAND = {\n  t1: { forward: 6, reverse: 0 }, t2: { forward: 6, reverse: 0 },\n  t3: { forward: 6, reverse: 0 }, t4: { forward: 6, reverse: 0 },\n  t5: { forward: 6, reverse: 0 }, t6: { forward: 6, reverse: 0 },\n  t7: { forward: 6, reverse: 0 }, t8: { forward: 6, reverse: 0 }\n};\n\n// ═══════════════════════════════════════════════════════════\n// INPUT EXTRACTION\n// ═══════════════════════════════════════════════════════════\n\nfunction inputDeadband(val, db) {\n  return Math.abs(val) < db ? 0 : val;\n}\n\nlet sway = (ch.ch1 || 0);\nlet surge = ch.ch2 || 0;\n\nlet heave = (c.heave_thrust !== undefined)\n  ? inputDeadband(c.heave_thrust, 0.05) * 100\n  : (ch.ch3 || 0);\n\nlet roll = inputDeadband(c.roll_thrust ?? 0, 0.05) * 100;\nlet pitch = inputDeadband(c.pitch_thrust ?? 0, 0.05) * 100;\nlet yaw = inputDeadband(c.yaw_thrust ?? 0, 0.05) * 100;\n\n// ═══════════════════════════════════════════════════════════\n// MIXER EQUATIONS\n// ═══════════════════════════════════════════════════════════\n\nlet thr1 = surge - sway - yaw;\nlet thr2 = -surge - sway - yaw;\nlet thr3 = -surge + sway - yaw;\nlet thr4 = surge + sway - yaw;\n\nlet thr5 = -heave - roll - pitch;\nlet thr6 = heave - roll + pitch;\nlet thr7 = -heave + roll + pitch;\nlet thr8 = heave + roll - pitch;\n\nlet thr = [thr1, thr2, thr3, thr4, thr5, thr6, thr7, thr8];\n\n// ═══════════════════════════════════════════════════════════\n// FIRST NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_cmd = Math.max(...thr.map(Math.abs));\nif (max_cmd > 100) {\n  const scale = 100 / max_cmd;\n  thr = thr.map(t => t * scale);\n}\n\n// ═══════════════════════════════════════════════════════════\n// REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction reverse_compensate(val, gain) {\n  return (val < 0) ? val * gain : val;\n}\n\nthr[0] = reverse_compensate(thr[0], REVERSE_GAIN.t1);\nthr[1] = reverse_compensate(thr[1], REVERSE_GAIN.t2);\nthr[2] = reverse_compensate(thr[2], REVERSE_GAIN.t3);\nthr[3] = reverse_compensate(thr[3], REVERSE_GAIN.t4);\nthr[4] = reverse_compensate(thr[4], REVERSE_GAIN.t5);\nthr[5] = reverse_compensate(thr[5], REVERSE_GAIN.t6);\nthr[6] = reverse_compensate(thr[6], REVERSE_GAIN.t7);\nthr[7] = reverse_compensate(thr[7], REVERSE_GAIN.t8);\n\n// ═══════════════════════════════════════════════════════════\n// DEADBAND COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction deadband_compensate(val, fwd_db, rev_db) {\n  if (val > ZERO_CUTOFF) {\n    return fwd_db + (val / 100) * (100 - fwd_db);\n  } else if (val < -ZERO_CUTOFF) {\n    return -(rev_db + (Math.abs(val) / 100) * (100 - rev_db));\n  }\n  return 0;\n}\n\nthr[0] = deadband_compensate(thr[0], DEADBAND.t1.forward, DEADBAND.t1.reverse);\nthr[1] = deadband_compensate(thr[1], DEADBAND.t2.forward, DEADBAND.t2.reverse);\nthr[2] = deadband_compensate(thr[2], DEADBAND.t3.forward, DEADBAND.t3.reverse);\nthr[3] = deadband_compensate(thr[3], DEADBAND.t4.forward, DEADBAND.t4.reverse);\nthr[4] = deadband_compensate(thr[4], DEADBAND.t5.forward, DEADBAND.t5.reverse);\nthr[5] = deadband_compensate(thr[5], DEADBAND.t6.forward, DEADBAND.t6.reverse);\nthr[6] = deadband_compensate(thr[6], DEADBAND.t7.forward, DEADBAND.t7.reverse);\nthr[7] = deadband_compensate(thr[7], DEADBAND.t8.forward, DEADBAND.t8.reverse);\n\n// ═══════════════════════════════════════════════════════════\n// SECOND NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_final = Math.max(...thr.map(Math.abs));\nif (max_final > 100) {\n  const scale_final = 100 / max_final;\n  thr = thr.map(t => t * scale_final);\n}\n\n// ═══════════════════════════════════════════════════════════\n// CLAMP + ARM GATE\n// If disarmed, override all outputs to zero.\n// Zero packet is still sent to keep ESP deadman timer alive.\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v) {\n  return Math.max(-100, Math.min(100, Math.round(v)));\n}\n\nconst thrClamped = armed ? thr.map(clamp) : [0, 0, 0, 0, 0, 0, 0, 0];\n\n// Cache latest output for cross-vessel latching/replay\nflow.set(`veh_last::${vessel_id}`, {\n  fleet_id,\n  vessel_id,\n  thr: thrClamped,\n  craft_type: 1, // ROV\n  craft_id: (() => {\n    const k = String(vessel_id || \"\").trim().toLowerCase();\n    const raw =\n      flow.get(`udp_craft_id::${k}`) ??\n      flow.get(`udp_craft_id::${vessel_id}`) ??\n      1;\n\n    const n = parseInt(raw, 10);\n    return (Number.isFinite(n) && n >= 1) ? n : 1;\n  })(),\n  ts: Date.now()\n});\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 1: MQTT (simulator / debug — remove once UDP proven)\n// ═══════════════════════════════════════════════════════════\n\nconst mqttMsg = {\n  topic: `fleet/${fleet_id}/vessels/${vessel_id}/thrusters/set`,\n  payload: { thr: thrClamped, armed }\n};\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 0: UDP binary packet\n// ═══════════════════════════════════════════════════════════\n\nconst vesselKey = String(vessel_id || \"\").trim().toLowerCase();\n\nconst udp_ip =\n  flow.get(`udp_ip::${vesselKey}`) ||\n  flow.get(`udp_ip::${vessel_id}`) ||\n  null;\n\n// Safe craft_id lookup\nconst rawCraft =\n  flow.get(`udp_craft_id::${vesselKey}`) ??\n  flow.get(`udp_craft_id::${vessel_id}`) ??\n  1;\n\nlet craft_id = parseInt(rawCraft, 10);\nif (!Number.isFinite(craft_id) || craft_id < 1) craft_id = 1;\n\n// Optional per-vessel enable switch (default true)\nconst enabled = flow.get(`vessel_enabled::${vessel_id}`);\nif (enabled === false) {\n  // Output order is [MQTT, UDP]\n  return [mqttMsg, null];\n}\n\n// No UDP IP yet: still publish MQTT debug/sim command\nif (!udp_ip) {\n  return [mqttMsg, null];\n}\n\n// Build 18-byte packet:\n//   byte 0:     craft_type = 1 (ROV8)\n//   byte 1:     craft_id\n//   bytes 2-17: T1..T8 as int16 little-endian, scaled x10\n//               (-100 → -1000, +100 → +1000)\n//   All zeros when disarmed\nconst buf = Buffer.alloc(18);\nbuf.writeUInt8(1, 0);\nbuf.writeUInt8(craft_id, 1);\n\nfor (let i = 0; i < 8; i++) {\n  const val = Math.max(-1000, Math.min(1000, Math.round(thrClamped[i] * 10)));\n  buf.writeInt16LE(val, 2 + i * 2);\n}\n\nconst udpMsg = {\n  payload: buf,\n  ip: udp_ip,\n  port: 14560\n};\n\n// Output order is [MQTT, UDP]\nreturn [mqttMsg, udpMsg];\n",
+        "func": "// ═══════════════════════════════════════════════════════════════════════════\n// ROV 8-THRUSTER MIXER WITH PER-THRUSTER DEADBAND & REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════════════════════\n//\n// PURPOSE:\n// --------\n// Converts 6-axis control commands (surge/sway/heave/roll/pitch/yaw) into\n// individual thruster power outputs for an 8-thruster ROV configuration.\n// Applies per-thruster forward/reverse deadband compensation and reverse bias.\n//\n// INPUTS:\n// -------\n// From control loop (normalized [-1, 1]):\n//   - control.roll_thrust   → roll correction\n//   - control.pitch_thrust  → pitch correction\n//   - control.yaw_thrust    → yaw correction\n//   - control.heave_thrust  → heave/depth correction (or direct stick in MANUAL)\n//\n// From stick channels (percent [-100, 100]):\n//   - ch1 → sway (left/right)\n//   - ch2 → surge (forward/back)\n//   - ch3 → heave (up/down) if not using control loop\n//   - ch4 → yaw (used by control loop)\n//   - ch5 → ARM switch: >0 = armed, <=0 = disarmed (zero packet sent)\n//   - ch6 → roll (used by control loop)\n//   - ch7 → pitch (used by control loop)\n//\n// OUTPUTS:\n// --------\n// output[1]: MQTT → kept for simulator / debug during UDP transition\n//   - topic: fleet/{fleet_id}/vessels/{vessel_id}/thrusters/set\n//   - payload: { thr: [t1..t8] } clamped to [-100, 100]\n//\n// output[0]: UDP binary packet → udp out node\n//   - 18-byte packet: craft_type(1) + craft_id(1) + T1..T8 int16LE x10 (16)\n//   - All thrusters zeroed if disarmed (CH5 <= 0)\n//   - Zeros still sent when disarmed to keep ESP deadman timer alive\n//   - msg.ip and msg.port set dynamically from flow context\n//   - Dropped silently if udp_ip::{vessel_id} not yet resolved\n//\n// THRUSTER LAYOUT:\n// ----------------\n//\n// TOP VIEW (Horizontal thrusters 1-4: surge/sway/yaw)\n// ----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [1] Port Bow    [2] Stbd Bow\n//          ╱              ╲\n//         ╱                ╲\n//        ╱                  ╲\n//       ╱                    ╲\n//  [4] Port Stern      [3] Stbd Stern\n//\n// SIDE VIEW (Vertical thrusters 5-8: heave/roll/pitch)\n// -----------------------------------------------------\n//          Bow (forward)\n//               ↑\n//               |\n//     [5] Port Bow (vert)    [6] Stbd Bow (vert)\n//          ↕                      ↕\n//\n//     [8] Port Stern (vert)   [7] Stbd Stern (vert)\n//          ↕                      ↕\n//\n// SIGN CONVENTIONS:\n// -----------------\n// Body frame (right-hand rule):\n//   +Surge  = forward (bow direction)\n//   +Sway   = starboard (right)\n//   +Heave  = upward (toward surface)\n//   +Roll   = roll right (starboard down, port up)\n//   +Pitch  = nose down (bow down, stern up)\n//   +Yaw    = turn right (clockwise from above)\n//\n// ═══════════════════════════════════════════════════════════════════════════\n\nconst cfg = flow.get(\"rov_tuning\") || {};\n\n\nif (flow.get(\"safety_kill_active\") === true) return null;\n\nconst ch = msg.payload || {};\nconst c = msg.control || {};\nconst fleet_id = msg.router?.fleet_id || \"\";\nconst vessel_id = msg.router?.vessel_id || flow.get(\"active_vessel_id\");\nif (!vessel_id) return null;\n\n\n// ═══════════════════════════════════════════════════════════\n// ARM CHECK — CH5 > 0 = armed, <= 0 = disarmed\n// When disarmed: zero packet is still sent to keep ESP deadman alive\n// ═══════════════════════════════════════════════════════════\n\nconst armed = (ch.ch5 || 0) > 0;\n\n// ═══════════════════════════════════════════════════════════\n// TUNING PARAMETERS\n// ═══════════════════════════════════════════════════════════\n\nconst ZERO_CUTOFF = 0.5;\n\nconst REVERSE_BIAS = {\n  t1: 1.1, t2: 1.10, t3: 1.10, t4: 1.10,\n  t5: 1.10, t6: 1.10, t7: 1.10, t8: 1.10\n};\n\nconst REVERSE_GAIN = {\n  t1: 1 + REVERSE_BIAS.t1, t2: 1 + REVERSE_BIAS.t2,\n  t3: 1 + REVERSE_BIAS.t3, t4: 1 + REVERSE_BIAS.t4,\n  t5: 1 + REVERSE_BIAS.t5, t6: 1 + REVERSE_BIAS.t6,\n  t7: 1 + REVERSE_BIAS.t7, t8: 1 + REVERSE_BIAS.t8\n};\n\nconst DEADBAND = {\n  t1: { forward: 6, reverse: 0 }, t2: { forward: 6, reverse: 0 },\n  t3: { forward: 6, reverse: 0 }, t4: { forward: 6, reverse: 0 },\n  t5: { forward: 6, reverse: 0 }, t6: { forward: 6, reverse: 0 },\n  t7: { forward: 6, reverse: 0 }, t8: { forward: 6, reverse: 0 }\n};\n\n// ═══════════════════════════════════════════════════════════\n// INPUT EXTRACTION\n// ═══════════════════════════════════════════════════════════\n\nfunction inputDeadband(val, db) {\n  return Math.abs(val) < db ? 0 : val;\n}\n\nlet sway = (ch.ch1 || 0);\nlet surge = ch.ch2 || 0;\n\nlet heave = (c.heave_thrust !== undefined)\n  ? inputDeadband(c.heave_thrust, 0.05) * 100\n  : (ch.ch3 || 0);\n\nlet roll = inputDeadband(c.roll_thrust ?? 0, 0.05) * 100;\nlet pitch = inputDeadband(c.pitch_thrust ?? 0, 0.05) * 100;\nlet yaw = inputDeadband(c.yaw_thrust ?? 0, 0.05) * 100;\n\n// ═══════════════════════════════════════════════════════════\n// MIXER EQUATIONS\n// ═══════════════════════════════════════════════════════════\n\nlet thr1 = surge - sway - yaw;\nlet thr2 = -surge - sway - yaw;\nlet thr3 = -surge + sway - yaw;\nlet thr4 = surge + sway - yaw;\n\nlet thr5 = -heave - roll - pitch;\nlet thr6 = heave - roll + pitch;\nlet thr7 = -heave + roll + pitch;\nlet thr8 = heave + roll - pitch;\n\nlet thr = [thr1, thr2, thr3, thr4, thr5, thr6, thr7, thr8];\n\n// ═══════════════════════════════════════════════════════════\n// FIRST NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_cmd = Math.max(...thr.map(Math.abs));\nif (max_cmd > 100) {\n  const scale = 100 / max_cmd;\n  thr = thr.map(t => t * scale);\n}\n\n// ═══════════════════════════════════════════════════════════\n// REVERSE BIAS COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction reverse_compensate(val, gain) {\n  return (val < 0) ? val * gain : val;\n}\n\nthr[0] = reverse_compensate(thr[0], REVERSE_GAIN.t1);\nthr[1] = reverse_compensate(thr[1], REVERSE_GAIN.t2);\nthr[2] = reverse_compensate(thr[2], REVERSE_GAIN.t3);\nthr[3] = reverse_compensate(thr[3], REVERSE_GAIN.t4);\nthr[4] = reverse_compensate(thr[4], REVERSE_GAIN.t5);\nthr[5] = reverse_compensate(thr[5], REVERSE_GAIN.t6);\nthr[6] = reverse_compensate(thr[6], REVERSE_GAIN.t7);\nthr[7] = reverse_compensate(thr[7], REVERSE_GAIN.t8);\n\n// ═══════════════════════════════════════════════════════════\n// DEADBAND COMPENSATION\n// ═══════════════════════════════════════════════════════════\n\nfunction deadband_compensate(val, fwd_db, rev_db) {\n  if (val > ZERO_CUTOFF) {\n    return fwd_db + (val / 100) * (100 - fwd_db);\n  } else if (val < -ZERO_CUTOFF) {\n    return -(rev_db + (Math.abs(val) / 100) * (100 - rev_db));\n  }\n  return 0;\n}\n\nthr[0] = deadband_compensate(thr[0], DEADBAND.t1.forward, DEADBAND.t1.reverse);\nthr[1] = deadband_compensate(thr[1], DEADBAND.t2.forward, DEADBAND.t2.reverse);\nthr[2] = deadband_compensate(thr[2], DEADBAND.t3.forward, DEADBAND.t3.reverse);\nthr[3] = deadband_compensate(thr[3], DEADBAND.t4.forward, DEADBAND.t4.reverse);\nthr[4] = deadband_compensate(thr[4], DEADBAND.t5.forward, DEADBAND.t5.reverse);\nthr[5] = deadband_compensate(thr[5], DEADBAND.t6.forward, DEADBAND.t6.reverse);\nthr[6] = deadband_compensate(thr[6], DEADBAND.t7.forward, DEADBAND.t7.reverse);\nthr[7] = deadband_compensate(thr[7], DEADBAND.t8.forward, DEADBAND.t8.reverse);\n\n// ═══════════════════════════════════════════════════════════\n// SECOND NORMALISATION\n// ═══════════════════════════════════════════════════════════\n\nconst max_final = Math.max(...thr.map(Math.abs));\nif (max_final > 100) {\n  const scale_final = 100 / max_final;\n  thr = thr.map(t => t * scale_final);\n}\n\n// ═══════════════════════════════════════════════════════════\n// CLAMP + ARM GATE\n// If disarmed, override all outputs to zero.\n// Zero packet is still sent to keep ESP deadman timer alive.\n// ═══════════════════════════════════════════════════════════\n\nfunction clamp(v) {\n  return Math.max(-100, Math.min(100, Math.round(v)));\n}\n\nconst thrClamped = armed ? thr.map(clamp) : [0, 0, 0, 0, 0, 0, 0, 0];\n\n// Cache latest output for cross-vessel latching/replay\nflow.set(`veh_last::${vessel_id}`, {\n  fleet_id,\n  vessel_id,\n  thr: thrClamped,\n  craft_type: 1, // ROV\n  craft_id: (() => {\n    const k = String(vessel_id || \"\").trim().toLowerCase();\n    const raw =\n      flow.get(`udp_craft_id::${k}`) ??\n      flow.get(`udp_craft_id::${vessel_id}`) ??\n      1;\n\n    const n = parseInt(raw, 10);\n    return (Number.isFinite(n) && n >= 1) ? n : 1;\n  })(),\n  ts: Date.now()\n});\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 1: MQTT (simulator / debug — remove once UDP proven)\n// ═══════════════════════════════════════════════════════════\n\nconst mqttMsg = {\n  topic: `fleet/${fleet_id}/vessels/${vessel_id}/thrusters/set`,\n  payload: { thr: thrClamped, armed }\n};\n\n// ═══════════════════════════════════════════════════════════\n// OUTPUT 0: UDP binary packet\n// ═══════════════════════════════════════════════════════════\n\nconst vesselKey = String(vessel_id || \"\").trim().toLowerCase();\n\nconst udp_ip =\n  flow.get(`udp_ip::${vesselKey}`) ||\n  flow.get(`udp_ip::${vessel_id}`) ||\n  null;\n\n// Safe craft_id lookup\nconst rawCraft =\n  flow.get(`udp_craft_id::${vesselKey}`) ??\n  flow.get(`udp_craft_id::${vessel_id}`) ??\n  1;\n\nlet craft_id = parseInt(rawCraft, 10);\nif (!Number.isFinite(craft_id) || craft_id < 1) craft_id = 1;\n\n// Optional per-vessel enable switch (default true)\nconst enabled = flow.get(`vessel_enabled::${vessel_id}`);\nif (enabled === false) {\n  // Output order is [MQTT, UDP]\n  return [mqttMsg, null];\n}\n\n// No UDP IP yet: still publish MQTT debug/sim command\nif (!udp_ip) {\n  return [mqttMsg, null];\n}\n\n// Build 18-byte packet:\n//   byte 0:     craft_type = 1 (ROV8)\n//   byte 1:     craft_id\n//   bytes 2-17: T1..T8 as int16 little-endian, scaled x10\n//               (-100 → -1000, +100 → +1000)\n//   All zeros when disarmed\nconst buf = Buffer.alloc(18);\nbuf.writeUInt8(1, 0);\nbuf.writeUInt8(craft_id, 1);\n\nfor (let i = 0; i < 8; i++) {\n  const val = Math.max(-1000, Math.min(1000, Math.round(thrClamped[i] * 10)));\n  buf.writeInt16LE(val, 2 + i * 2);\n}\n\nconst udpMsg = {\n  payload: buf,\n  ip: udp_ip,\n  port: 14560\n};\n\n// Output order is [MQTT, UDP]\nreturn [mqttMsg, udpMsg];\n",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1650,
-        "y": 1500,
+        "x": 1610,
+        "y": 2200,
         "wires": [
             [],
             [
@@ -824,8 +831,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1200,
-        "y": 1860,
+        "x": 1160,
+        "y": 2560,
         "wires": [
             [
                 "e9e483f1",
@@ -846,8 +853,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1630,
-        "y": 1900,
+        "x": 1590,
+        "y": 2600,
         "wires": [
             [],
             [
@@ -870,8 +877,8 @@
         "correl": "",
         "expiry": "",
         "broker": "7ac3dc6d59d7b607",
-        "x": 2030,
-        "y": 1620,
+        "x": 1970,
+        "y": 2300,
         "wires": []
     },
     {
@@ -887,7 +894,7 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1140,
+        "x": 1200,
         "y": 40,
         "wires": []
     },
@@ -956,7 +963,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 840,
-        "y": 260,
+        "y": 300,
         "wires": []
     },
     {
@@ -974,7 +981,7 @@
         "rh": 0,
         "inputs": 0,
         "x": 160,
-        "y": 300,
+        "y": 340,
         "wires": [
             [
                 "5751ec45"
@@ -995,7 +1002,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 1200,
-        "y": 480,
+        "y": 520,
         "wires": []
     },
     {
@@ -1013,7 +1020,7 @@
         "rh": 0,
         "inputs": 0,
         "x": 160,
-        "y": 360,
+        "y": 400,
         "wires": [
             [
                 "5751ec45"
@@ -1034,7 +1041,7 @@
         "finalize": "",
         "libs": [],
         "x": 550,
-        "y": 420,
+        "y": 460,
         "wires": [
             [
                 "dca3efc5",
@@ -1061,7 +1068,7 @@
         "payload": "$flowContext(\"fleet_table\", [])",
         "payloadType": "jsonata",
         "x": 950,
-        "y": 400,
+        "y": 440,
         "wires": [
             [
                 "b8d1619123c6be0f"
@@ -1082,7 +1089,7 @@
         "finalize": "",
         "libs": [],
         "x": 1160,
-        "y": 420,
+        "y": 460,
         "wires": [
             [
                 "dca3efc5"
@@ -1107,8 +1114,8 @@
         "topic": "",
         "payload": "{}",
         "payloadType": "json",
-        "x": 210,
-        "y": 1520,
+        "x": 170,
+        "y": 2220,
         "wires": [
             [
                 "a8e15b2c3dced058",
@@ -1129,8 +1136,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 1600,
+        "x": 430,
+        "y": 2300,
         "wires": [
             [
                 "8af6712c",
@@ -1153,8 +1160,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 780,
+        "x": 130,
+        "y": 1540,
         "wires": [
             [
                 "a3a1266c638e3e8c"
@@ -1174,8 +1181,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 780,
+        "x": 530,
+        "y": 1540,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1200,8 +1207,8 @@
         "correl": "",
         "expiry": "",
         "broker": "7ac3dc6d59d7b607",
-        "x": 1170,
-        "y": 960,
+        "x": 1990,
+        "y": 1760,
         "wires": []
     },
     {
@@ -1217,8 +1224,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 840,
+        "x": 550,
+        "y": 1600,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1239,8 +1246,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 840,
+        "x": 130,
+        "y": 1600,
         "wires": [
             [
                 "1cea5f8ebc306380"
@@ -1261,8 +1268,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 900,
+        "x": 130,
+        "y": 1660,
         "wires": [
             [
                 "551b6c8aab76cfba"
@@ -1283,8 +1290,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 180,
-        "y": 960,
+        "x": 140,
+        "y": 1720,
         "wires": [
             [
                 "551b6c8aab76cfba"
@@ -1305,8 +1312,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 1020,
+        "x": 130,
+        "y": 1780,
         "wires": [
             [
                 "551b6c8aab76cfba"
@@ -1326,8 +1333,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 630,
-        "y": 920,
+        "x": 590,
+        "y": 1680,
         "wires": [
             []
         ]
@@ -1346,8 +1353,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 1080,
+        "x": 130,
+        "y": 1840,
         "wires": [
             [
                 "551b6c8aab76cfba"
@@ -1366,8 +1373,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 910,
-        "y": 1200,
+        "x": 870,
+        "y": 1960,
         "wires": [
             [
                 "876c0e12130146a2"
@@ -1388,8 +1395,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1100,
-        "y": 1200,
+        "x": 1060,
+        "y": 1960,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1409,8 +1416,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 1000,
+        "x": 530,
+        "y": 1760,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1431,8 +1438,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
-        "y": 1140,
+        "x": 150,
+        "y": 1900,
         "wires": [
             [
                 "2c4d6f3f976194fd"
@@ -1452,8 +1459,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 580,
-        "y": 1240,
+        "x": 540,
+        "y": 2000,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1473,8 +1480,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 1060,
+        "x": 530,
+        "y": 1820,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1494,8 +1501,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 1120,
+        "x": 530,
+        "y": 1880,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1515,8 +1522,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 570,
-        "y": 1180,
+        "x": 530,
+        "y": 1940,
         "wires": [
             [
                 "281442f354a4173e"
@@ -1537,8 +1544,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 160,
-        "y": 1200,
+        "x": 120,
+        "y": 1960,
         "wires": [
             [
                 "c3f8555acbaad7df"
@@ -1559,8 +1566,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 1240,
+        "x": 130,
+        "y": 2000,
         "wires": [
             [
                 "31e964a91c4e986d"
@@ -1581,8 +1588,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 1280,
+        "x": 130,
+        "y": 2040,
         "wires": [
             [
                 "fe1b2a4d886e3897"
@@ -1603,8 +1610,8 @@
         "rap": false,
         "rh": 0,
         "inputs": 0,
-        "x": 170,
-        "y": 1320,
+        "x": 130,
+        "y": 2080,
         "wires": [
             [
                 "99db60efc78df0a1"
@@ -1624,8 +1631,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1220,
-        "y": 1720,
+        "x": 1180,
+        "y": 2420,
         "wires": [
             [
                 "a224cae1"
@@ -1645,8 +1652,8 @@
         "outport": "",
         "base64": false,
         "multicast": "false",
-        "x": 2010,
-        "y": 1760,
+        "x": 1970,
+        "y": 2460,
         "wires": []
     },
     {
@@ -1663,7 +1670,7 @@
         "finalize": "",
         "libs": [],
         "x": 900,
-        "y": 500,
+        "y": 540,
         "wires": [
             [
                 "a4f7d2e50d8b7c44"
@@ -1683,7 +1690,7 @@
         "winHide": false,
         "name": "mDNS resolver",
         "x": 440,
-        "y": 620,
+        "y": 660,
         "wires": [
             [
                 "7b0fdc0b1b6c8c2e"
@@ -1706,8 +1713,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 640,
+        "x": 920,
+        "y": 900,
         "wires": [
             [
                 "ca6067b0b6b2e5a4"
@@ -1733,7 +1740,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 240,
-        "y": 500,
+        "y": 540,
         "wires": [
             [
                 "2b9057e1c0207f8a"
@@ -1754,8 +1761,8 @@
         "targetType": "full",
         "statusVal": "resolved_ip",
         "statusType": "msg",
-        "x": 1190,
-        "y": 580,
+        "x": 1690,
+        "y": 700,
         "wires": []
     },
     {
@@ -1772,7 +1779,7 @@
         "finalize": "",
         "libs": [],
         "x": 220,
-        "y": 560,
+        "y": 600,
         "wires": [
             []
         ]
@@ -1800,7 +1807,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 160,
-        "y": 640,
+        "y": 680,
         "wires": [
             [
                 "8afd672a7e4a6d83"
@@ -1820,8 +1827,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1200,
-        "y": 1520,
+        "x": 1160,
+        "y": 2220,
         "wires": [
             [],
             [
@@ -1842,8 +1849,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 810,
-        "y": 1780,
+        "x": 770,
+        "y": 2480,
         "wires": [
             [],
             [
@@ -1864,8 +1871,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1610,
-        "y": 1720,
+        "x": 1570,
+        "y": 2420,
         "wires": [
             [
                 "a224cae1"
@@ -1882,12 +1889,12 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
+        "complete": "params_debug",
+        "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 2000,
-        "y": 1860,
+        "x": 1960,
+        "y": 2560,
         "wires": []
     },
     {
@@ -1904,8 +1911,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 760,
-        "y": 1560,
+        "x": 720,
+        "y": 2260,
         "wires": []
     },
     {
@@ -1920,8 +1927,8 @@
         "once": true,
         "onceDelay": "0.5",
         "topic": "",
-        "x": 170,
-        "y": 1680,
+        "x": 130,
+        "y": 2380,
         "wires": [
             [
                 "a7f3e2f0b6c4d912"
@@ -1941,8 +1948,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 1660,
+        "x": 430,
+        "y": 2360,
         "wires": []
     },
     {
@@ -3008,5 +3015,510 @@
         "x": 1270,
         "y": 320,
         "wires": []
+    },
+    {
+        "id": "a200000000000100",
+        "type": "function",
+        "z": "a200000000000001",
+        "name": "Update rov_tuning",
+        "func": "const cfg = flow.get(\"rov_tuning\") || {};\n\nif (msg.topic) {\n    cfg[msg.topic] = Number(msg.payload);\n}\n\nflow.set(\"rov_tuning\", cfg);\nmsg.payload = cfg;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 240,
+        "wires": [
+            [
+                "a200000000000110"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000110",
+        "type": "debug",
+        "z": "a200000000000001",
+        "name": "rov_tuning live",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 940,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "a200000000000201",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_roll_p",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_roll_p"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_roll_p",
+                "valueType": "str"
+            }
+        ],
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000202",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_roll_d",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_roll_d"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_roll_d",
+                "valueType": "str"
+            }
+        ],
+        "x": 160,
+        "y": 180,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000203",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_pitch_p",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_pitch_p"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_pitch_p",
+                "valueType": "str"
+            }
+        ],
+        "x": 170,
+        "y": 240,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000204",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_pitch_d",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_pitch_d"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_pitch_d",
+                "valueType": "str"
+            }
+        ],
+        "x": 170,
+        "y": 300,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000205",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_heading_p",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_heading_p"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_heading_p",
+                "valueType": "str"
+            }
+        ],
+        "x": 180,
+        "y": 360,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000206",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_heading_i",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_heading_i"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_heading_i",
+                "valueType": "str"
+            }
+        ],
+        "x": 170,
+        "y": 420,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000207",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_yaw_d",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_yaw_d"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_yaw_d",
+                "valueType": "str"
+            }
+        ],
+        "x": 160,
+        "y": 480,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000208",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_depth_p",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_depth_p"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_depth_p",
+                "valueType": "str"
+            }
+        ],
+        "x": 170,
+        "y": 540,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
+    },
+    {
+        "id": "a200000000000209",
+        "type": "server-state-changed",
+        "z": "a200000000000001",
+        "name": "rov_depth_i",
+        "server": "ff347fc4.83b6c",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_number.rov_depth_i"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "rov_depth_i",
+                "valueType": "str"
+            }
+        ],
+        "x": 170,
+        "y": 600,
+        "wires": [
+            [
+                "a200000000000100"
+            ]
+        ]
     }
 ]
